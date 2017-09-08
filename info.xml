@@ -1,0 +1,19 @@
+<plugin name="myoquant">
+    <directory>
+        myoquant
+    </directory>
+	<version>
+		2017.09.06
+	</version>
+	<author>
+		Kyle Ellefsen
+	</author>
+	<url>
+		https://github.com/kyleellefsen/myoquant/archive/master.zip
+	</url>
+	<dependencies>
+	</dependencies>
+	<menu_layout>
+		<action location="myoquant" function="myoquant.gui">myoquant</action>
+	</menu_layout>
+</plugin>
