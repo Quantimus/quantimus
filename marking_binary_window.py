@@ -1,4 +1,5 @@
-from flika import Window
+import flika
+from flika.window import Window
 from flika.utils.misc import save_file_gui, open_file_gui
 from flika import global_vars as g
 from skimage import measure

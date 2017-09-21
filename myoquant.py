@@ -1,6 +1,7 @@
 import os
 import scipy
 import numpy as np
+from distutils.version import StrictVersion
 import skimage
 from skimage.filters import sobel
 from skimage.morphology import watershed
@@ -11,12 +12,21 @@ from skimage.measure import label
 from sklearn.linear_model import LogisticRegression
 from qtpy import uic
 
+import flika
 from flika.roi import makeROI
 from flika import global_vars as g
-from flika.process.BaseProcess import BaseProcess, WindowSelector, SliderLabel, CheckBox
 from flika.process import difference_of_gaussians, threshold, zproject, remove_small_blobs
 from flika.window import Window
 from flika.process.file_ import open_file
+
+flika_version = flika.__version__
+if StrictVersion(flika_version) < StrictVersion('0.2.23'):
+    from flika.process.BaseProcess import BaseProcess, WindowSelector, SliderLabel, CheckBox
+else:
+    from flika.utils.BaseProcess import BaseProcess, WindowSelector, SliderLabel, CheckBox
+
+
+
 
 from .marking_binary_window import Classifier_Window
 
