@@ -153,6 +153,7 @@ class Myoquant():
         gui.gridLayout_16.addWidget(self.threshold2_slider)
         gui.run_watershed_button.pressed.connect(self.run_watershed)
         gui.logistic_regression_button.pressed.connect(self.run_logistic_regression)
+        gui.SVM_button.pressed.connect(self.run_SVM_classification)
         gui.save_fiber_button.pressed.connect(self.save_fiber_data)
 
     def apply_filter(self):
@@ -191,6 +192,29 @@ class Myoquant():
         self.algorithm_gui.gridLayout_17.addWidget(self.classifier_window)
         self.algorithm_gui.analyze_tab_widget.setCurrentIndex(2)
 
+    def run_SVM_classification(self):
+        from sklearn import svm
+        X, y = self.classifier_window.get_training_data()
+        clf = svm.SVC()
+        clf.fit(X, y)
+        #print('Accuracy = {}'.format(clf.score(X, y)))
+        X = self.classifier_window.features_array
+        y = clf.predict(X)
+        roi_states = np.zeros_like(y)
+        roi_states[y == 1] = 1
+        roi_states[y == 0] = 2
+        result_win = Classifier_Window(self.classifier_window.image)
+
+
+        ######################################################################################
+        ##############   Add hand-designed rules here if you want  ###########################
+        ######################################################################################
+        # For instance, you could remove all ROIs smaller than 20 pixels like this:
+        #roi_states[X[:, 0] < 20] = 2
+
+        result_win.set_roi_states(roi_states)
+        self.algorithm_gui.model_params_label.setText('')
+
     def run_logistic_regression(self):
         X, y = self.classifier_window.get_training_data()
         self.logreg = LogisticRegression(C=1e9)
@@ -226,34 +250,40 @@ g.myoquant = myoquant
 
 
 
-
-"""
-from plugins.myoquant.marking_binary_window import Classifier_Window
-open_file(r'C:/Users/kyle/Desktop/tmp2.tif')
-C = Classifier_Window(g.win.image)
-C.load_classifications()
+def testing():
+    original = open_file(r'C:\Users\kyle\Desktop\tmp.tif')
+    g.myoquant.gui()
 
 
+    from sklearn import svm
+    from plugins.myoquant.marking_binary_window import Classifier_Window
+    self = g.myoquant
+
+    X, y = self.classifier_window.get_training_data()
+    clf = svm.SVC()
+    clf.fit(X, y)
+    print('Accuracy = {}'.format(clf.score(X,y)))
 
 
-self = g.myoquant
-self.classifier_window.save_classifications()
+    X = self.classifier_window.features_array
+    y = clf.predict(X)
+    roi_states = np.zeros_like(y)
+    roi_states[y == 1] = 1
+    roi_states[y == 0] = 2
+    result_win = Classifier_Window(self.classifier_window.image)
+    result_win.set_roi_states(roi_states)
 
 
-self.classifier_window = Classifier_Window(self.classifier_window.image)
-self.classifier_window.load_classifications()
-X, y = self.classifier_window.get_training_data()
-
-logreg = LogisticRegression(C=1e9)
-logreg.fit(X, y, sample_weight=X[:,0])
-print('Accuracy = {}'.format(logreg.score(X,y)))
 
 
-y = logreg.predict(X)
-plot_regression_results(X[:,0], X[:,1], y)
+
+    #logreg = LogisticRegression(C=1e9)
+    #logreg.fit(X, y, sample_weight=X[:,0])
+    #print('Accuracy = {}'.format(logreg.score(X,y)))
+    #y = logreg.predict(X)
+    #plot_regression_results(X[:,0], X[:,1], y)
 
 
-"""
 
 
 
@@ -262,19 +292,5 @@ if __name__ == '__main__':
     split_channels()
     crop
     original = resize(2)
-    sobelwin = Window(sobel(original.image), 'Sobel')
-    #laplacian = Window(skimage.filters.laplace(sobel.image), 'Laplacian')
-    #results = convolve_with_kernels_fft(laplacian.image, kernels)
-    results = convolve_with_kernels_fft(sobelwin.image, kernels)
-    #Window(np.sort(results,0))
-    lines = Window(np.max(results, 0), 'lines')
-    lines_threshold = Window(remove_borders(lines.image < .02), 'lines_threshold')
-    markers = np.zeros_like(lines_threshold.image, dtype=np.uint8)
-    markers[lines_threshold.image == 1] = 2
-    markers[original.image > .6] = 1
-    Window(markers)
-    binary_image = watershed(markers, markers)
-    binary_image -= 1
-    binary_window = Classifier_Window(remove_borders(binary_image))
-    features = get_important_features(binary_window.image)
-    remove_false_positives(binary_window, features)
+    g.myoquant.gui()
+

@@ -230,6 +230,13 @@
              </property>
             </spacer>
            </item>
+           <item row="1" column="0">
+            <widget class="QPushButton" name="SVM_button">
+             <property name="text">
+              <string>Run SVM Classification</string>
+             </property>
+            </widget>
+           </item>
           </layout>
          </item>
         </layout>
