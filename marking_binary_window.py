@@ -72,7 +72,16 @@ class Classifier_Window(Window):
             area = np.array([p.filled_area for p in self.props])
             eccentricity = np.array([p.eccentricity for p in self.props])
             convexity = np.array([p.filled_area / p.convex_area for p in self.props])
-            self.features_array = np.array([area, eccentricity, convexity]).T
+            perimeter = np.array([p.perimeter for p in self.props])
+            minor_axis= np.array([p.minor_axis_length for p in self.props])
+            circularity = np.empty_like(perimeter)
+            for i in np.arange(len(circularity)):
+                if perimeter[i] == 0:
+                    circularity[i]=0
+                else:
+                    circularity[i]=12.566*area[i]/((perimeter[i])**2)
+            self.features_array_read = np.array([area, eccentricity, convexity, circularity, minor_axis]).T
+            self.features_array = np.array([area, eccentricity, convexity, circularity]).T
         states = np.array([np.asscalar(a)for a in self.roi_states])
         X = self.features_array[states > 0, :]
         y = states[states > 0]

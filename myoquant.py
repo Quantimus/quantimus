@@ -3,6 +3,7 @@ import scipy
 import numpy as np
 from distutils.version import StrictVersion
 import skimage
+import xlsxwriter
 from skimage.filters import sobel
 from skimage.morphology import watershed
 from skimage.filters import gabor_kernel
@@ -18,6 +19,7 @@ from flika import global_vars as g
 from flika.process import difference_of_gaussians, threshold, zproject, remove_small_blobs
 from flika.window import Window
 from flika.process.file_ import open_file
+from flika.utils.misc import save_file_gui
 
 flika_version = flika.__version__
 if StrictVersion(flika_version) < StrictVersion('0.2.23'):
@@ -48,6 +50,7 @@ def get_important_features(binary_image):
     features['convexity'] = np.array([p.filled_area / p.convex_area for p in props])
     features['eccentricity'] = np.array([p.eccentricity for p in props])
     features['area'] = np.array([p.filled_area for p in props]) / 4000
+    features['circularity'] = np.array([p.filled_area*(4*np.pi)/p.perimeter**2 for p in props])
     return features
     p = pg.plot(features['convexity'], pen=pg.mkPen('r'))
     p.plot(features['eccentricity'], pen=pg.mkPen('g'))
@@ -72,6 +75,8 @@ def remove_false_positives(binary_window, features):
         elif features['eccentricity'][i] > .96 and features['convexity'][i] < .85:
             binary_window.roi_states[i] = 2
         elif features['area'][i] > 3:
+            binary_window.roi_states[i] = 2
+        elif features['circularity'][i] < 0.4:
             binary_window.roi_states[i] = 2
         else:
             binary_window.roi_states[i] = 1
@@ -133,6 +138,7 @@ class Myoquant():
     def __init__(self):
         pass
     def gui(self):
+        self.roiStates = None
         self.classifier_window = None
         self.lines_win = None
         gui = uic.loadUi(os.path.join(os.path.dirname(__file__), 'myoquant.ui'))
@@ -153,7 +159,6 @@ class Myoquant():
         gui.gridLayout_16.addWidget(self.threshold2_slider)
         gui.run_watershed_button.pressed.connect(self.run_watershed)
         gui.logistic_regression_button.pressed.connect(self.run_logistic_regression)
-        gui.SVM_button.pressed.connect(self.run_SVM_classification)
         gui.save_fiber_button.pressed.connect(self.save_fiber_data)
 
     def apply_filter(self):
@@ -233,38 +238,60 @@ class Myoquant():
         ######################################################################################
         # For instance, you could remove all ROIs smaller than 20 pixels like this:
         roi_states[X[:, 0] < 20] = 2
+        roi_states[X[:, 3] < 0.6] = 2
 
 
 
 
+        self.roiStates = roi_states
         result_win.set_roi_states(roi_states)
         params = list(self.logreg.intercept_) + list(self.logreg.coef_[0])
         params = ', '.join(['Beta_' + str(i) + '=' + str(coef) for i, coef in enumerate(params) ])
         self.algorithm_gui.model_params_label.setText(params)
 
     def save_fiber_data(self):
-        g.alert('save_fiber_data() Not yet implemented')
+        AreaV=["Area"]
+        EccentricityV=["Eccentricity"]
+        ConvexityV=["Convexity"]
+        CircularityV=["Circularity"]
+        ROIV=["ROI #"]
+        Minor_axisV=["Minor axis"]
+        
+        #ROIList=np.arange((len(self.classifier_window.features_array[2])))
+        for i, val in enumerate(self.classifier_window.features_array_read):
+            if self.roiStates[i] == 1:
+                ROIV.append(i)
+                AreaV.append(self.classifier_window.features_array_read[i][0])
+                EccentricityV.append(self.classifier_window.features_array_read[i][1])
+                ConvexityV.append(self.classifier_window.features_array_read[i][2])
+                CircularityV.append(self.classifier_window.features_array_read[i][3])
+                Minor_axisV.append(self.classifier_window.features_array_read[i][4])
+            else:
+                pass
+        fiberData=np.c_[ROIV,AreaV,EccentricityV,ConvexityV,CircularityV,Minor_axisV]
+        fileSaveAsName = save_file_gui('Save file as...', '.xlsx')
+        workbook = xlsxwriter.Workbook(fileSaveAsName)
+        worksheet = workbook.add_worksheet()
+        row = 0
+        for col, data in enumerate(fiberData):
+            worksheet.write_row(col, row, data)
+            
+        workbook.close()
 
 myoquant = Myoquant()
 g.myoquant = myoquant
 
 
-
 def testing():
     original = open_file(r'C:\Users\kyle\Desktop\tmp.tif')
     g.myoquant.gui()
-
-
     from sklearn import svm
     from plugins.myoquant.marking_binary_window import Classifier_Window
     self = g.myoquant
-
     X, y = self.classifier_window.get_training_data()
     clf = svm.SVC()
     clf.fit(X, y)
     print('Accuracy = {}'.format(clf.score(X,y)))
-
-
     X = self.classifier_window.features_array
     y = clf.predict(X)
     roi_states = np.zeros_like(y)
@@ -273,18 +300,11 @@ def testing():
     result_win = Classifier_Window(self.classifier_window.image)
     result_win.set_roi_states(roi_states)
 
-
-
-
-
     #logreg = LogisticRegression(C=1e9)
     #logreg.fit(X, y, sample_weight=X[:,0])
     #print('Accuracy = {}'.format(logreg.score(X,y)))
     #y = logreg.predict(X)
     #plot_regression_results(X[:,0], X[:,1], y)
-
-
-
 
 
 if __name__ == '__main__':
