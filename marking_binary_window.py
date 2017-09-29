@@ -26,7 +26,7 @@ class Classifier_Window(Window):
         self.colored_img = np.repeat(self.image[:, :, np.newaxis], 3, 2)
         self.imageview.setImage(self.colored_img)
         self.menu.addAction(QtWidgets.QAction("&Save Classifications", self, triggered=self.save_classifications))
-        self.menu.addAction(QtWidgets.QAction("&Load Classifications", self, triggered=self.load_classifications))
+        self.menu.addAction(QtWidgets.QAction("&Load Classifications", self, triggered=self.load_classifications_act))
         self.menu.addAction(QtWidgets.QAction("&Create Binary Window", self, triggered=self.create_binary_window))
         self.features_array = None
         self.props = None
@@ -104,8 +104,12 @@ class Classifier_Window(Window):
             bin_im[x, y] = 1
         Window(bin_im, 'Binary')
 
-    def load_classifications(self):
-        filename = open_file_gui("Open classifications", filetypes='*.json')
+    def load_classifications_act(self):
+        self.load_classifications()
+
+    def load_classifications(self, filename=None):
+        if filename is None:
+            filename = open_file_gui("Open classifications", filetypes='*.json')
         if filename is None:
             return None
         obj_text = codecs.open(filename, 'r', encoding='utf-8').read()
