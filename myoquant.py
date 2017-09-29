@@ -181,7 +181,7 @@ class Myoquant():
         markers = 1 + (self.lines_win.image < thresh1).astype(dtype=np.uint8)
         markers[self.original_window_selector.window.image > thresh2] = 0
         #self.markers_win.image = markers
-        self.markers_win.imageview.setImage(markers, autoLevels=False)
+        self.markers_win.imageview.setImage(markers, autoRange=False, autoLevels=False)
         self.markers_win.imageview.setLevels(-.1, 2.1)
 
     def run_watershed(self):
