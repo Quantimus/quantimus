@@ -156,7 +156,7 @@ def get_new_I(I_old, thresh1=.50, thresh2=.60):
         # roi_num = 227 - 1
         prop1 = props_40[roi_num]
         x, y = prop1.coords[0,:]
-        prop2 = props_50[G_50[x,y] - 1]
+        prop2 = props_50[G_50[x, y] - 1]
         if prop1.area > 200:
             perim_ratio = prop2.perimeter/prop1.perimeter
             if perim_ratio > 1.5:
@@ -348,30 +348,6 @@ def testing():
     binary = Classifier_Window(binary_tmp.image, 'Classifier Window')
     close(binary_tmp)
     binary.load_classifications(r'C:\Users\kyle\Desktop\classifications.json')
-
-
-
-    g.myoquant.gui()
-    from sklearn import svm
-
-    self = g.myoquant
-    X, y = self.classifier_window.get_training_data()
-    clf = svm.SVC()
-    clf.fit(X, y)
-    print('Accuracy = {}'.format(clf.score(X,y)))
-    X = self.classifier_window.features_array
-    y = clf.predict(X)
-    roi_states = np.zeros_like(y)
-    roi_states[y == 1] = 1
-    roi_states[y == 0] = 2
-    result_win = Classifier_Window(self.classifier_window.image)
-    result_win.set_roi_states(roi_states)
-
-    #logreg = LogisticRegression(C=1e9)
-    #logreg.fit(X, y, sample_weight=X[:,0])
-    #print('Accuracy = {}'.format(logreg.score(X,y)))
-    #y = logreg.predict(X)
-    #plot_regression_results(X[:,0], X[:,1], y)
 
 
 if __name__ == '__main__':

@@ -44,7 +44,8 @@ class Classifier_Window(Window):
             if roi_num < 0:
                 pass
             else:
-                print('ROI #{}'.format(roi_num))
+                prop = self.props[roi_num]
+                print('ROI #{}. area={}. eccentricity={}. convexity={}. perimeter={}. minor_axis_length={}. '.format(roi_num, prop.area, prop.eccentricity, prop.filled_area / prop.convex_area, prop.perimeter, prop.minor_axis_length))
                 old_state = self.roi_states[roi_num]
                 new_state = (old_state + 1 ) % 3
                 self.roi_states[roi_num] = new_state
