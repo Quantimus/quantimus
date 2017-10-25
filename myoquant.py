@@ -258,6 +258,7 @@ class Myoquant():
         from sklearn import svm
         X_train, y = self.classifier_window.get_training_data()
         mu, sigma = self.get_norm_coeffs(self.classifier_window.features_array)
+
         X_train = self.normalize_data(X_train, mu, sigma)
         clf = svm.SVC()
         clf.fit(X_train, y)
@@ -268,14 +269,17 @@ class Myoquant():
         roi_states[y == 1] = 1
         roi_states[y == 0] = 2
         result_win = Classifier_Window(self.classifier_window.image)
-
+        X = self.classifier_window.features_array
 
         ######################################################################################
         ##############   Add hand-designed rules here if you want  ###########################
         ######################################################################################
         # For instance, you could remove all ROIs smaller than 20 pixels like this:
-        #roi_states[X[:, 0] < 20] = 2
 
+        roi_states[X[:, 0] < 15] = 2 # Area must be smaller than 15 pixels
+        roi_states[X[:, 3] < 0.6] = 2 # Convexity must be smaller than 0.6
+
+        self.roiStates = roi_states
         result_win.set_roi_states(roi_states)
         self.algorithm_gui.model_params_label.setText('')
 
@@ -296,7 +300,7 @@ class Myoquant():
         ##############   Add hand-designed rules here if you want  ###########################
         ######################################################################################
         # For instance, you could remove all ROIs smaller than 20 pixels like this:
-        roi_states[X[:, 0] < 20] = 2
+        roi_states[X[:, 0] < 15] = 2
         roi_states[X[:, 3] < 0.6] = 2
 
 
@@ -315,16 +319,18 @@ class Myoquant():
         CircularityV=["Circularity"]
         ROIV=["ROI #"]
         Minor_axisV=["Minor axis"]
+
+        scaleFactor=g.myoquant.algorithm_gui.microns_per_pixel_SpinBox.value()
         
         #ROIList=np.arange((len(self.classifier_window.features_array[2])))
         for i, val in enumerate(self.classifier_window.features_array_read):
             if self.roiStates[i] == 1:
                 ROIV.append(i)
-                AreaV.append(self.classifier_window.features_array_read[i][0])
+                AreaV.append(self.classifier_window.features_array_read[i][0]/(scaleFactor**2))
                 EccentricityV.append(self.classifier_window.features_array_read[i][1])
                 ConvexityV.append(self.classifier_window.features_array_read[i][2])
                 CircularityV.append(self.classifier_window.features_array_read[i][3])
-                Minor_axisV.append(self.classifier_window.features_array_read[i][4])
+                Minor_axisV.append(self.classifier_window.features_array_read[i][4]*scaleFactor)
             else:
                 pass
         fiberData=np.c_[ROIV,AreaV,EccentricityV,ConvexityV,CircularityV,Minor_axisV]
