@@ -3,11 +3,38 @@ from flika.window import Window
 from flika.utils.misc import save_file_gui, open_file_gui
 from flika import global_vars as g
 from skimage import measure
-from skimage.measure import label
-
+from skimage.measure import label, find_contours
 from qtpy import QtWidgets, QtCore
 import numpy as np
 import json, codecs
+
+def rotation_matrix(theta):
+    return np.array([[np.cos(theta), -np.sin(theta)],
+                     [np.sin(theta), np.cos(theta)]])
+
+
+def calc_min_feret_diameter(props):
+    '''  calculates all the minimum feret diameters for regions in props '''
+    # props = g.win.props
+    min_feret_diameters = []
+    for roi in props:
+        if min(roi.convex_image.shape) == 1:
+            min_feret_diameters.append(1)
+        elif min(roi.convex_image.shape) == 2:
+            min_feret_diameters.append(2)
+        else:
+            identity_convex_hull = roi.convex_image
+            coordinates = np.vstack(find_contours(identity_convex_hull, 0.5, fully_connected = 'high'))
+            coordinates -= np.mean(coordinates, 0)
+            diams = []
+            Rs = [rotation_matrix(theta) for theta in np.arange(0, np.pi / 2, .01)]
+            for R in Rs:
+                newcoords = np.dot(coordinates, R.T)
+                w, h = np.max(newcoords, 0) - np.min(newcoords, 0)
+                diams.extend([w, h])
+            min_feret_diameters.append(np.min(diams))
+    min_feret_diameters = np.array(min_feret_diameters)
+    return min_feret_diameters
 
 
 class Classifier_Window(Window):
