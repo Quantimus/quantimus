@@ -19,7 +19,7 @@ from flika.roi import makeROI
 from flika import global_vars as g
 from flika.process import difference_of_gaussians, threshold, zproject, remove_small_blobs
 from flika.window import Window
-from flika.process.file_ import open_file
+from flika.process.file_ import open_file, close
 from flika.utils.misc import save_file_gui
 
 flika_version = flika.__version__
@@ -207,7 +207,18 @@ class Myoquant():
         if self.original_window_selector.window is None:
             g.alert('You must select a Window before creating the markers window.')
         else:
-            original = self.original_window_selector.window.image
+            win = self.original_window_selector.window
+            if np.max(win.image) > 1:
+                g.alert("The window you select must have values between 0 and 1. Scaling the window now.")
+                I = win.image.astype(np.float)
+                I -= np.min(I)
+                I /= np.max(I)
+                win.image = I
+                win.dtype = I.dtype
+                win.imageview.setImage(win.image)
+                win._init_dimensions(win.image)
+                win.imageview.ui.graphicsView.addItem(win.top_left_label)
+            original = win.image
             self.markers_win = Window(np.zeros_like(original, dtype=np.uint8), 'Binary Markers')
             self.markers_win.imageview.setLevels(-.1, 2.1)
             self.threshold1_slider.setRange(np.min(original), np.max(original))
@@ -225,10 +236,11 @@ class Myoquant():
             markers[I > thresh2] = 2
             self.markers_win.imageview.setImage(markers, autoRange=False, autoLevels=False)
 
-
     def fill_boundaries_button(self):
         if self.classifier_window is not None:
             self.algorithm_gui.gridLayout_17.removeWidget(self.classifier_window)
+            self.classifier_window.setParent(None)
+            close(self.classifier_window)
         lower_bound = self.threshold1_slider.value()
         upper_bound = self.threshold2_slider.value()
         thresholds = np.linspace(lower_bound, upper_bound, 8)
@@ -251,7 +263,6 @@ class Myoquant():
         X = X - mean
         X = X / (2 * std)
         return X
-
 
     def run_SVM_classification(self):
         print('Running SVM classification')
