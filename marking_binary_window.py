@@ -60,6 +60,9 @@ class Classifier_Window(Window):
         self.menu.addAction(QtWidgets.QAction("&Load Classifications", self, triggered=self.load_classifications_act))
         self.menu.addAction(QtWidgets.QAction("&Create Binary Window", self, triggered=self.create_binary_window))
         self.features_array = None
+        # self.features_array_extended includes all features in self.features_array as well as features only calculated
+        # for exporting.
+        self.features_array_extended = None
         self.props = None
 
     def mouseClickEvent(self, ev):
@@ -77,7 +80,9 @@ class Classifier_Window(Window):
             else:
                 prop = self.props[roi_num]
                 scaleFactor= g.myoquant.algorithm_gui.microns_per_pixel_SpinBox.value()
-                print('ROI #{}. area={}. eccentricity={}. convexity={}. perimeter={}. minor_axis_length={}. '.format(roi_num, prop.area, prop.eccentricity, prop.filled_area / prop.convex_area, prop.perimeter, prop.minor_axis_length))
+                print('ROI #{}. area={}. eccentricity={}. convexity={}. perimeter={}. minor_axis_length={}. '
+                      .format(roi_num, prop.area, prop.eccentricity, prop.filled_area / prop.convex_area,
+                              prop.perimeter, prop.minor_axis_length))
                 old_state = self.roi_states[roi_num]
                 new_state = (old_state + 1 ) % 3
                 self.roi_states[roi_num] = new_state
@@ -94,7 +99,7 @@ class Classifier_Window(Window):
         self.imageview.getView().setXRange(xrange[0], xrange[1], 0, False)
         self.imageview.getView().setYRange(yrange[0], yrange[1], 0)
 
-    def get_training_data(self):
+    def get_features_array(self):
         # important features include:
         # convexity: ratio of convex_image area to image area
         # area: number of pixels total
@@ -106,20 +111,32 @@ class Classifier_Window(Window):
             eccentricity = np.array([p.eccentricity for p in self.props])
             convexity = np.array([p.filled_area / p.convex_area for p in self.props])
             perimeter = np.array([p.perimeter for p in self.props])
-            minor_axis= np.array([p.minor_axis_length for p in self.props])
             circularity = np.empty_like(perimeter)
             for i in np.arange(len(circularity)):
                 if perimeter[i] == 0:
-                    circularity[i]=0
+                    circularity[i] = 0
                 else:
-                    circularity[i]=12.566*area[i]/((perimeter[i])**2)
-            self.features_array_read = np.array([area, eccentricity, convexity, circularity, minor_axis]).T
+                    circularity[i] = (4 * np.pi * area[i]) / perimeter[i]**2
             self.features_array = np.array([area, eccentricity, convexity, circularity]).T
+        return self.features_array
+
+    def get_training_data(self):
+        if self.features_array is None:
+            self.features_array = self.get_features_array()
         states = np.array([np.asscalar(a)for a in self.roi_states])
         X = self.features_array[states > 0, :]
         y = states[states > 0]
         y[y == 2] = 0
         return X, y
+
+    def get_extended_features_array(self):
+        if self.features_array is None:
+            self.features_array = self.get_features_array()
+        X = np.copy(self.features_array)
+        minor_axis = np.array([p.minor_axis_length for p in self.props])
+        roi_num = np.arange(self.nROIs)
+        X = np.concatenate((X, roi_num[:, np.newaxis], minor_axis[:, np.newaxis]), 1)
+        return X
 
     def save_classifications(self):
         filename = save_file_gui("Save classifications", filetypes='*.json')

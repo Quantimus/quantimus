@@ -141,31 +141,28 @@ def get_border_between_two_props(prop1, prop2):
     #Window(I1.astype(np.int) + I2.astype(np.int) + 2*border.astype(np.int))
     return np.argwhere(border) + top_left
 
-def get_new_I(I_old, thresh1=.50, thresh2=.60):
-    I_40 = I_old < thresh1
-    G_40 = label(I_40, connectivity=2)
-    nROIs = np.max(G_40)
-    #Window(G_40, 'G 40')
-    I_50 = I_old < thresh2
-    G_50 = label(I_50, connectivity=2)
-    #Window(G_50, 'G 50')
-    props_40 = measure.regionprops(G_40)
-    props_50 = measure.regionprops(G_50)
-    borders = np.zeros_like(I_old)
+def get_new_I(I, thresh1=.20, thresh2=.30):
+    label_im_1 = label(I < thresh1, connectivity=2)
+    label_im_2 = label(I < thresh2, connectivity=2)
+    props_1 = measure.regionprops(label_im_1)
+    props_2 = measure.regionprops(label_im_2)
+    borders = np.zeros_like(I)
+    #  The maximum of the labeled image is the number of contiguous regions, or ROIs.
+    nROIs = np.max(label_im_1)
     for roi_num in np.arange(nROIs):
         # roi_num = 227 - 1
-        prop1 = props_40[roi_num]
+        prop1 = props_1[roi_num]
         x, y = prop1.coords[0,:]
-        prop2 = props_50[G_50[x, y] - 1]
+        prop2 = props_2[label_im_2[x, y] - 1]
         if prop1.area > 200:
             perim_ratio = prop2.perimeter/prop1.perimeter
             if perim_ratio > 1.5:
                 border_idx = get_border_between_two_props(prop1, prop2)
                 borders[border_idx[:,0], border_idx[:, 1]] = 1
 
-    I_new = np.copy(I_old)
+    I_new = np.copy(I)
     I_new[np.where(borders)] = 2
-    #I_new = I_old + .2 * borders
+    #I_new = I + .2 * borders
     return I_new
 
 
@@ -324,34 +321,21 @@ class Myoquant():
         self.algorithm_gui.model_params_label.setText(params)
 
     def save_fiber_data(self):
-        AreaV=["Area"]
-        EccentricityV=["Eccentricity"]
-        ConvexityV=["Convexity"]
-        CircularityV=["Circularity"]
-        ROIV=["ROI #"]
-        Minor_axisV=["Minor axis"]
-
-        scaleFactor=g.myoquant.algorithm_gui.microns_per_pixel_SpinBox.value()
-        
-        #ROIList=np.arange((len(self.classifier_window.features_array[2])))
-        for i, val in enumerate(self.classifier_window.features_array_read):
-            if self.roiStates[i] == 1:
-                ROIV.append(i)
-                AreaV.append(self.classifier_window.features_array_read[i][0]/(scaleFactor**2))
-                EccentricityV.append(self.classifier_window.features_array_read[i][1])
-                ConvexityV.append(self.classifier_window.features_array_read[i][2])
-                CircularityV.append(self.classifier_window.features_array_read[i][3])
-                Minor_axisV.append(self.classifier_window.features_array_read[i][4]*scaleFactor)
-            else:
-                pass
-        fiberData=np.c_[ROIV,AreaV,EccentricityV,ConvexityV,CircularityV,Minor_axisV]
-        fileSaveAsName = save_file_gui('Save file as...', '.xlsx')
+        scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
+        if not isinstance(g.win, Classifier_Window):
+            g.alert('Make sure the window containing the data you are trying to export is selected (highlighted in green).')
+            return
+        X = g.win.get_extended_features_array()
+        X = X[g.win.roi_states == 1]
+        X[:, 0] /= scaleFactor**2  # area
+        X[:, 4] *= scaleFactor  # minor axis
+        fileSaveAsName = save_file_gui('Save file as...', filetypes='.xlsx')
         workbook = xlsxwriter.Workbook(fileSaveAsName)
         worksheet = workbook.add_worksheet()
-        row = 0
-        for col, data in enumerate(fiberData):
-            worksheet.write_row(col, row, data)
-            
+        header = ['Area', 'Eccentricity', 'Convexity', 'Circularity', 'ROI #', 'Minor axis length']
+        worksheet.write_row(0, 0, header)
+        for row_idx, row_data in enumerate(X):
+            worksheet.write_row(row_idx + 1, 0, row_data)
         workbook.close()
 
 myoquant = Myoquant()
