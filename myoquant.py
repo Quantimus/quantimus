@@ -268,9 +268,9 @@ class Myoquant():
         mu, sigma = self.get_norm_coeffs(self.classifier_window.features_array)
 
         X_train = self.normalize_data(X_train, mu, sigma)
-        clf = svm.SVC()
+        clf = svm.SVC(kernel='linear')
         clf.fit(X_train, y)
-        #print('Accuracy = {}'.format(clf.score(X, y)))
+        print('Accuracy = {}'.format(clf.score(X_train, y)))
         X_test = self.normalize_data(self.classifier_window.features_array, mu, sigma)
         y = clf.predict(X_test)
         roi_states = np.zeros_like(y)
@@ -295,7 +295,7 @@ class Myoquant():
         X, y = self.classifier_window.get_training_data()
         self.logreg = LogisticRegression(C=1e9)
         self.logreg.fit(X, y)
-        #print('Accuracy = {}'.format(logreg.score(X,y)))
+        print('Accuracy = {}'.format(self.logreg.score(X,y)))
         X = self.classifier_window.features_array
         y = self.logreg.predict(X)
         result_win = Classifier_Window(self.classifier_window.image)
