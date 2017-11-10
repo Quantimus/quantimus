@@ -13,6 +13,8 @@ from skimage.measure import label
 from sklearn.linear_model import LogisticRegression
 from qtpy import uic
 from skimage.morphology import binary_dilation
+import json, codecs
+
 
 import flika
 from flika.roi import makeROI
@@ -20,7 +22,7 @@ from flika import global_vars as g
 from flika.process import difference_of_gaussians, threshold, zproject, remove_small_blobs
 from flika.window import Window
 from flika.process.file_ import open_file, close
-from flika.utils.misc import save_file_gui
+from flika.utils.misc import save_file_gui, open_file_gui
 
 flika_version = flika.__version__
 if StrictVersion(flika_version) < StrictVersion('0.2.23'):
@@ -29,9 +31,8 @@ else:
     from flika.utils.BaseProcess import BaseProcess, WindowSelector, SliderLabel, CheckBox
 
 
-
-
 from .marking_binary_window import Classifier_Window
+from . import mysql_interface
 
 def show_label_img(binary_img):
     A = label(binary_img, connectivity=2)
@@ -175,6 +176,7 @@ class Myoquant():
 
     def __init__(self):
         pass
+
     def gui(self):
         self.roiStates = None
         self.classifier_window = None
@@ -187,7 +189,7 @@ class Myoquant():
         gui.gridLayout_18.addWidget(self.original_window_selector)
         self.threshold1_slider = SliderLabel(3)
         self.threshold1_slider.setRange(0, 1)
-        self.threshold1_slider.setValue(.2)
+        self.threshold1_slider.setValue(.22)
         self.threshold1_slider.valueChanged.connect(self.threshold_slider_changed)
         self.threshold2_slider = SliderLabel(2)
         self.threshold2_slider.setRange(0, 1)
@@ -197,8 +199,57 @@ class Myoquant():
         gui.gridLayout_16.addWidget(self.threshold2_slider)
         gui.fill_boundaries_button.pressed.connect(self.fill_boundaries_button)
         gui.logistic_regression_button.pressed.connect(self.run_logistic_regression)
-        gui.SVM_button.pressed.connect(self.run_SVM_classification)
+        gui.SVM_button.pressed.connect(self.run_SVM_classification_on_labeled_image)
+        gui.SVM_saved_button.pressed.connect(self.run_SVM_classification_on_saved_training_data)
+
+        self.validation_manual_selector = WindowSelector()
+        self.validation_manual_selector.valueChanged.connect(self.validate)
+        gui.gridLayout_11.addWidget(self.validation_manual_selector)
+        self.validation_automatic_selector = WindowSelector()
+        self.validation_automatic_selector.valueChanged.connect(self.validate)
+        gui.gridLayout_12.addWidget(self.validation_automatic_selector)
+
         gui.save_fiber_button.pressed.connect(self.save_fiber_data)
+        gui.mysql_export_button.pressed.connect(self.mysql_export_fiber_data)
+        gui.load_binary_button.pressed.connect(self.load_binary_image)
+
+        gui.closeEvent = self.closeEvent
+
+    def validate(self):
+        print('validating...')
+        if self.validation_manual_selector.window is None:
+            return None
+        if self.validation_automatic_selector.window is None:
+            return None
+        man = self.validation_manual_selector.window
+        auto = self.validation_automatic_selector.window
+        man_states = man.roi_states
+        auto_states = auto.roi_states
+        assert len(man_states) == len(auto_states)
+        true_positives = np.count_nonzero(np.logical_and(man_states == 1, auto_states == 1))
+        true_negatives = np.count_nonzero(np.logical_and(man_states == 2, auto_states == 2))
+        false_positives = np.count_nonzero(np.logical_and(man_states == 2, auto_states == 1))
+        false_negatives = np.count_nonzero(np.logical_and(man_states == 1, auto_states == 2))
+        precision = true_positives / (true_positives + false_positives)
+        recall = true_positives / (true_positives + false_negatives)
+        f1_score = 2 * (precision * recall) / (precision + recall)
+        self.algorithm_gui.true_pos_label.setText(str(true_positives))
+        self.algorithm_gui.true_neg_label.setText(str(true_negatives))
+        self.algorithm_gui.false_pos_label.setText(str(false_positives))
+        self.algorithm_gui.false_neg_label.setText(str(false_negatives))
+        self.algorithm_gui.precision_label.setText(str(precision))
+        self.algorithm_gui.recall_label.setText(str(recall))
+        self.algorithm_gui.f1_score_label.setText(str(f1_score))
+
+    def load_binary_image_cmd(self, fname):
+        win = open_file(fname)
+        self.add_classifier_window(win.image)
+        win.close()
+
+    def load_binary_image(self):
+        win = open_file(from_gui=True)
+        self.add_classifier_window(win.image)
+        win.close()
 
     def create_markers_win(self):
         if self.original_window_selector.window is None:
@@ -222,6 +273,9 @@ class Myoquant():
             self.threshold2_slider.setRange(np.min(original), np.max(original))
             self.threshold_slider_changed()
 
+            fname = self.original_window_selector.value().filename
+            self.algorithm_gui.mousename.setText(os.path.splitext(os.path.basename(fname))[0])
+
     def threshold_slider_changed(self):
         if self.original_window_selector.window is None:
             g.alert('You must select a Window before adjusting the levels.')
@@ -233,11 +287,16 @@ class Myoquant():
             markers[I > thresh2] = 2
             self.markers_win.imageview.setImage(markers, autoRange=False, autoLevels=False)
 
-    def fill_boundaries_button(self):
+    def add_classifier_window(self, I):
         if self.classifier_window is not None:
             self.algorithm_gui.gridLayout_17.removeWidget(self.classifier_window)
             self.classifier_window.setParent(None)
-            close(self.classifier_window)
+            self.classifier_window.close()
+        self.classifier_window = Classifier_Window(I)
+        self.algorithm_gui.gridLayout_17.addWidget(self.classifier_window)
+        self.algorithm_gui.analyze_tab_widget.setCurrentIndex(1)
+
+    def fill_boundaries_button(self):
         lower_bound = self.threshold1_slider.value()
         upper_bound = self.threshold2_slider.value()
         thresholds = np.linspace(lower_bound, upper_bound, 8)
@@ -247,9 +306,8 @@ class Myoquant():
             print(thresholds[i])
             I_new = get_new_I(I_new, thresholds[i], thresholds[i + 1])
         self.filled_boundaries_win = Window(I_new, 'Filled Boundaries')
-        self.classifier_window = Classifier_Window(remove_borders(I_new < upper_bound))
-        self.algorithm_gui.gridLayout_17.addWidget(self.classifier_window)
-        self.algorithm_gui.analyze_tab_widget.setCurrentIndex(1)
+        classifier_image = remove_borders(I_new < upper_bound)
+        self.add_classifier_window(classifier_image)
 
     def get_norm_coeffs(self, X):
         mean = np.mean(X, 0)
@@ -261,17 +319,29 @@ class Myoquant():
         X = X / (2 * std)
         return X
 
-    def run_SVM_classification(self):
+    def run_SVM_classification_on_labeled_image(self):
+        X_train, y_train = self.classifier_window.get_training_data()
+        mu, sigma = self.get_norm_coeffs(self.classifier_window.features_array)
+        self.run_SVM_classification_general(X_train, y_train, mu, sigma)
+
+    def run_SVM_classification_on_saved_training_data(self):
+        filename = open_file_gui("Open training_data", filetypes='*.json')
+        if filename is None:
+            return None
+        obj_text = codecs.open(filename, 'r', encoding='utf-8').read()
+        data = json.loads(obj_text)
+        X_train = np.array(data['features'])
+        y_train = np.array(data['states'])
+        mu, sigma = self.get_norm_coeffs(X_train)
+        self.run_SVM_classification_general(X_train, y_train, mu, sigma)
+
+    def run_SVM_classification_general(self, X_train, y_train, mu, sigma):
         print('Running SVM classification')
         from sklearn import svm
-        X_train, y = self.classifier_window.get_training_data()
-        mu, sigma = self.get_norm_coeffs(self.classifier_window.features_array)
-
         X_train = self.normalize_data(X_train, mu, sigma)
-        clf = svm.SVC(kernel='linear')
-        clf.fit(X_train, y)
-        print('Accuracy = {}'.format(clf.score(X_train, y)))
-        X_test = self.normalize_data(self.classifier_window.features_array, mu, sigma)
+        clf = svm.SVC()
+        clf.fit(X_train, y_train)
+        X_test = self.normalize_data(self.classifier_window.get_features_array(), mu, sigma)
         y = clf.predict(X_test)
         roi_states = np.zeros_like(y)
         roi_states[y == 1] = 1
@@ -282,10 +352,10 @@ class Myoquant():
         ######################################################################################
         ##############   Add hand-designed rules here if you want  ###########################
         ######################################################################################
-        # For instance, you could remove all ROIs smaller than 20 pixels like this:
+        # For instance, you could remove all ROIs smaller than 15 pixels like this:
 
-        roi_states[X[:, 0] < 15] = 2 # Area must be smaller than 15 pixels
-        roi_states[X[:, 3] < 0.6] = 2 # Convexity must be smaller than 0.6
+        #roi_states[X[:, 0] < 15] = 2 # Area must be smaller than 15 pixels
+        #roi_states[X[:, 3] < 0.6] = 2 # Convexity must be smaller than 0.6
 
         self.roiStates = roi_states
         result_win.set_roi_states(roi_states)
@@ -337,6 +407,26 @@ class Myoquant():
         for row_idx, row_data in enumerate(X):
             worksheet.write_row(row_idx + 1, 0, row_data)
         workbook.close()
+
+    def mysql_export_fiber_data(self):
+        scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
+        if not isinstance(g.win, Classifier_Window):
+            g.alert('Make sure the window containing the data you are trying to export is selected (highlighted in green).')
+            return
+        X = g.win.get_extended_features_array()
+        X = X[g.win.roi_states == 1]
+        X[:, 0] /= scaleFactor**2  # area
+        X[:, 4] *= scaleFactor  # minor axis
+        # ['Area', 'Eccentricity', 'Convexity', 'Circularity', 'ROI #', 'Minor axis length']
+        mousename = self.algorithm_gui.mousename.text()
+        msg = mysql_interface.add_fibers(mousename, X)
+        g.alert(msg)
+
+    def closeEvent(self, event):
+        print('Closing myoquant gui')
+        if self.classifier_window is not None:
+            self.classifier_window.close()
+        event.accept() # let the window close
 
 myoquant = Myoquant()
 g.myoquant = myoquant

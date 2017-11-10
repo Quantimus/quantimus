@@ -56,6 +56,8 @@ class Classifier_Window(Window):
         self.roi_states = np.zeros(np.max(self.labeled_img), dtype=np.uint8)
         self.colored_img = np.repeat(self.image[:, :, np.newaxis], 3, 2)
         self.imageview.setImage(self.colored_img)
+
+        self.menu.addAction(QtWidgets.QAction("&Save Training Data", self, triggered=self.save_training_data))
         self.menu.addAction(QtWidgets.QAction("&Save Classifications", self, triggered=self.save_classifications))
         self.menu.addAction(QtWidgets.QAction("&Load Classifications", self, triggered=self.load_classifications_act))
         self.menu.addAction(QtWidgets.QAction("&Create Binary Window", self, triggered=self.create_binary_window))
@@ -144,6 +146,16 @@ class Classifier_Window(Window):
             return None
         states = [np.asscalar(a)for a in self.roi_states]
         data = {'states': states}
+        json.dump(data, codecs.open(filename, 'w', encoding='utf-8'), separators=(',', ':'), sort_keys=True, indent=4)  ### this saves the array in .json format
+
+    def save_training_data(self):
+        filename = save_file_gui("Save training_data", filetypes='*.json')
+        if filename is None:
+            return None
+        X, y = self.get_training_data()
+        y = y.tolist()
+        X = X.tolist()
+        data = {'features': X, 'states': y}
         json.dump(data, codecs.open(filename, 'w', encoding='utf-8'), separators=(',', ':'), sort_keys=True, indent=4)  ### this saves the array in .json format
 
     def create_binary_window(self):

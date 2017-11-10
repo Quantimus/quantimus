@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>571</width>
-    <height>239</height>
+    <width>716</width>
+    <height>383</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -156,14 +156,21 @@
          </item>
          <item row="2" column="0">
           <layout class="QGridLayout" name="gridLayout_14">
-           <item row="0" column="0">
-            <widget class="QPushButton" name="logistic_regression_button">
+           <item row="1" column="0">
+            <widget class="QPushButton" name="SVM_button">
              <property name="text">
-              <string>Run Logistic Regression</string>
+              <string>Run SVM Classification training on labeled image</string>
              </property>
             </widget>
            </item>
-           <item row="0" column="1">
+           <item row="2" column="0">
+            <widget class="QPushButton" name="SVM_saved_button">
+             <property name="text">
+              <string>Run SVM Classification on saved training data</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
             <spacer name="horizontalSpacer_5">
              <property name="orientation">
               <enum>Qt::Horizontal</enum>
@@ -175,13 +182,6 @@
               </size>
              </property>
             </spacer>
-           </item>
-           <item row="1" column="0">
-            <widget class="QPushButton" name="SVM_button">
-             <property name="text">
-              <string>Run SVM Classification</string>
-             </property>
-            </widget>
            </item>
           </layout>
          </item>
@@ -196,8 +196,8 @@
           <rect>
            <x>10</x>
            <y>10</y>
-           <width>451</width>
-           <height>171</height>
+           <width>501</width>
+           <height>291</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout_10">
@@ -213,13 +213,6 @@
              </size>
             </property>
            </spacer>
-          </item>
-          <item row="1" column="0">
-           <layout class="QFormLayout" name="formLayout">
-            <property name="fieldGrowthPolicy">
-             <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-            </property>
-           </layout>
           </item>
           <item row="0" column="0">
            <widget class="QLabel" name="micronsPixelLabel">
@@ -247,6 +240,143 @@
             </property>
            </widget>
           </item>
+          <item row="1" column="0" rowspan="2" colspan="3">
+           <widget class="QGroupBox" name="groupBox">
+            <property name="title">
+             <string>Classification Validation</string>
+            </property>
+            <widget class="QWidget" name="formLayoutWidget">
+             <property name="geometry">
+              <rect>
+               <x>9</x>
+               <y>19</y>
+               <width>481</width>
+               <height>241</height>
+              </rect>
+             </property>
+             <layout class="QFormLayout" name="validation_layout">
+              <item row="0" column="0">
+               <widget class="QLabel" name="label_6">
+                <property name="text">
+                 <string>Manually Labeled Image</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="label_7">
+                <property name="text">
+                 <string>Automatically Labeled Image</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="label_8">
+                <property name="text">
+                 <string>True Positives</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QLabel" name="label_9">
+                <property name="text">
+                 <string>True Negatives</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0">
+               <widget class="QLabel" name="label_10">
+                <property name="text">
+                 <string>False Positives</string>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="0">
+               <widget class="QLabel" name="label_11">
+                <property name="text">
+                 <string>False Negatives</string>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="0">
+               <widget class="QLabel" name="label_12">
+                <property name="text">
+                 <string>Precision</string>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="0">
+               <widget class="QLabel" name="label_13">
+                <property name="text">
+                 <string>Recall</string>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="1">
+               <widget class="QLabel" name="recall_label">
+                <property name="text">
+                 <string/>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="1">
+               <widget class="QLabel" name="precision_label">
+                <property name="text">
+                 <string/>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="1">
+               <widget class="QLabel" name="false_neg_label">
+                <property name="text">
+                 <string/>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="1">
+               <widget class="QLabel" name="false_pos_label">
+                <property name="text">
+                 <string/>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="1">
+               <widget class="QLabel" name="true_neg_label">
+                <property name="text">
+                 <string/>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QLabel" name="true_pos_label">
+                <property name="text">
+                 <string/>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <layout class="QGridLayout" name="gridLayout_11"/>
+              </item>
+              <item row="1" column="1">
+               <layout class="QGridLayout" name="gridLayout_12"/>
+              </item>
+              <item row="8" column="0">
+               <widget class="QLabel" name="f1_score">
+                <property name="text">
+                 <string>F1 Score</string>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="1">
+               <widget class="QLabel" name="f1_score_label">
+                <property name="text">
+                 <string/>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </widget>
+          </item>
          </layout>
         </widget>
        </widget>
@@ -264,7 +394,7 @@
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout_15">
-          <item row="0" column="1">
+          <item row="0" column="3">
            <spacer name="horizontalSpacer_2">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
@@ -284,7 +414,7 @@
             </property>
            </widget>
           </item>
-          <item row="1" column="0">
+          <item row="3" column="0">
            <spacer name="verticalSpacer_3">
             <property name="orientation">
              <enum>Qt::Vertical</enum>
@@ -296,6 +426,30 @@
              </size>
             </property>
            </spacer>
+          </item>
+          <item row="1" column="0">
+           <widget class="QPushButton" name="mysql_export_button">
+            <property name="text">
+             <string>Export to MySQL</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLabel" name="label_2">
+            <property name="text">
+             <string>Mouse Name:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2">
+           <widget class="QLineEdit" name="mousename"/>
+          </item>
+          <item row="2" column="0">
+           <widget class="QPushButton" name="load_binary_button">
+            <property name="text">
+             <string>Load Binary Image</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </widget>
