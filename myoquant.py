@@ -10,7 +10,6 @@ from skimage.filters import gabor_kernel
 from scipy.signal import convolve2d
 from skimage import measure
 from skimage.measure import label
-from sklearn.linear_model import LogisticRegression
 from qtpy import uic
 from skimage.morphology import binary_dilation
 import json, codecs
@@ -198,7 +197,6 @@ class Myoquant():
         gui.gridLayout_9.addWidget(self.threshold1_slider)
         gui.gridLayout_16.addWidget(self.threshold2_slider)
         gui.fill_boundaries_button.pressed.connect(self.fill_boundaries_button)
-        gui.logistic_regression_button.pressed.connect(self.run_logistic_regression)
         gui.SVM_button.pressed.connect(self.run_SVM_classification_on_labeled_image)
         gui.SVM_saved_button.pressed.connect(self.run_SVM_classification_on_saved_training_data)
 
@@ -360,35 +358,6 @@ class Myoquant():
         self.roiStates = roi_states
         result_win.set_roi_states(roi_states)
         self.algorithm_gui.model_params_label.setText('')
-
-    def run_logistic_regression(self):
-        X, y = self.classifier_window.get_training_data()
-        self.logreg = LogisticRegression(C=1e9)
-        self.logreg.fit(X, y)
-        print('Accuracy = {}'.format(self.logreg.score(X,y)))
-        X = self.classifier_window.features_array
-        y = self.logreg.predict(X)
-        result_win = Classifier_Window(self.classifier_window.image)
-        roi_states = np.zeros_like(y)
-        roi_states[y == 1] = 1
-        roi_states[y == 0] = 2
-
-
-        ######################################################################################
-        ##############   Add hand-designed rules here if you want  ###########################
-        ######################################################################################
-        # For instance, you could remove all ROIs smaller than 20 pixels like this:
-        roi_states[X[:, 0] < 15] = 2
-        roi_states[X[:, 3] < 0.6] = 2
-
-
-
-
-        self.roiStates = roi_states
-        result_win.set_roi_states(roi_states)
-        params = list(self.logreg.intercept_) + list(self.logreg.coef_[0])
-        params = ', '.join(['Beta_' + str(i) + '=' + str(coef) for i, coef in enumerate(params) ])
-        self.algorithm_gui.model_params_label.setText(params)
 
     def save_fiber_data(self):
         scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
