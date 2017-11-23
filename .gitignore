@@ -141,3 +141,8 @@ $RECYCLE.BIN/
 
 test_data/
 TODO.txt
+.idea/workspace.xml
+.idea/myoquant.iml
+.idea/misc.xml
+.idea/modules.xml
+.idea/vcs.xml
