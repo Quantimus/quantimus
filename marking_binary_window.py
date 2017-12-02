@@ -13,7 +13,6 @@ def rotation_matrix(theta):
     return np.array([[np.cos(theta), -np.sin(theta)],
                      [np.sin(theta), np.cos(theta)]])
 
-
 def calc_min_feret_diameter(props):
     '''  calculates all the minimum feret diameters for regions in props '''
     # props = g.win.props
@@ -47,6 +46,7 @@ class Classifier_Window(Window):
     GREEN = np.array([False, True, False])
     WHITE = np.array([True, True, True])
     BLACK = np.array([False, False, False])
+    YELLOW = np.array([True, True, False])
 
     def __init__(self, tif, name='flika', filename='', commands=[], metadata=dict()):
         tif = tif.astype(np.bool)
@@ -87,9 +87,10 @@ class Classifier_Window(Window):
                       .format(roi_num, prop.area, prop.eccentricity, prop.filled_area / prop.convex_area,
                               prop.perimeter, prop.minor_axis_length))
                 old_state = self.roi_states[roi_num]
-                new_state = (old_state + 1 ) % 3
+                # added a yellow color for testing: roi_state=3
+                new_state = (old_state + 1 ) % 4
                 self.roi_states[roi_num] = new_state
-                color = [Classifier_Window.WHITE, Classifier_Window.GREEN, Classifier_Window.RED][new_state]
+                color = [Classifier_Window.WHITE, Classifier_Window.GREEN, Classifier_Window.RED, Classifier_Window.YELLOW][new_state]
                 x, y = self.props[roi_num].coords.T
                 self.colored_img[x, y] = color
                 self.update_image(self.colored_img)
@@ -182,9 +183,10 @@ class Classifier_Window(Window):
         if self.features_array is None:
             self.features_array = self.get_features_array()
         X = np.copy(self.features_array)
-        minor_axis = np.array([p.minor_axis_length for p in self.props])
+        #minor_axis = np.array([p.minor_axis_length for p in self.props])
+        min_ferets = np.array([calc_min_feret_diameter(g.win.props)]).T
         roi_num = np.arange(self.nROIs)
-        X = np.concatenate((X, roi_num[:, np.newaxis], minor_axis[:, np.newaxis]), 1)
+        X = np.concatenate((X, roi_num[:, np.newaxis], min_ferets), 1)
         return X
 
     def save_classifications(self):
@@ -245,7 +247,8 @@ class Classifier_Window(Window):
 
 
 
-#self = Classifier_Window(g.currentWindow.image)
+
+#self = Classifier_Window(g.currentWindow.image) --- g.win._____
 
 
 

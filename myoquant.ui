@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>716</width>
-    <height>383</height>
+    <width>1006</width>
+    <height>688</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -25,7 +25,7 @@
         </sizepolicy>
        </property>
        <property name="currentIndex">
-        <number>0</number>
+        <number>5</number>
        </property>
        <widget class="QWidget" name="tab_2">
         <attribute name="title">
@@ -67,6 +67,19 @@
            </item>
           </layout>
          </item>
+         <item row="8" column="0">
+          <spacer name="verticalSpacer_2">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
          <item row="6" column="0">
           <widget class="QGroupBox" name="circle_clusters_groupbox">
            <property name="title">
@@ -106,19 +119,6 @@
             </item>
            </layout>
           </widget>
-         </item>
-         <item row="8" column="0">
-          <spacer name="verticalSpacer_2">
-           <property name="orientation">
-            <enum>Qt::Vertical</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>20</width>
-             <height>40</height>
-            </size>
-           </property>
-          </spacer>
          </item>
         </layout>
        </widget>
@@ -187,6 +187,223 @@
          </item>
         </layout>
        </widget>
+       <widget class="QWidget" name="tab">
+        <attribute name="title">
+         <string>Post SVM Filtering</string>
+        </attribute>
+        <widget class="QLabel" name="label_14">
+         <property name="geometry">
+          <rect>
+           <x>30</x>
+           <y>20</y>
+           <width>211</width>
+           <height>16</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Enter Parameter cut off values:</string>
+         </property>
+        </widget>
+        <widget class="QWidget" name="gridLayoutWidget_2">
+         <property name="geometry">
+          <rect>
+           <x>30</x>
+           <y>50</y>
+           <width>266</width>
+           <height>157</height>
+          </rect>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_19">
+          <item row="4" column="2">
+           <widget class="QDoubleSpinBox" name="max_eccentricity_SpinBox">
+            <property name="readOnly">
+             <bool>false</bool>
+            </property>
+            <property name="decimals">
+             <number>4</number>
+            </property>
+            <property name="maximum">
+             <double>10000.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QDoubleSpinBox" name="min_circularity_SpinBox">
+            <property name="readOnly">
+             <bool>false</bool>
+            </property>
+            <property name="decimals">
+             <number>4</number>
+            </property>
+            <property name="maximum">
+             <double>10000.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2">
+           <widget class="QDoubleSpinBox" name="max_circularity_SpinBox">
+            <property name="readOnly">
+             <bool>false</bool>
+            </property>
+            <property name="decimals">
+             <number>4</number>
+            </property>
+            <property name="maximum">
+             <double>10000.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLabel" name="label_15">
+            <property name="text">
+             <string>Minimum</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="2">
+           <widget class="QLabel" name="label_16">
+            <property name="text">
+             <string>Maximum</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_18">
+            <property name="text">
+             <string>Area</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QDoubleSpinBox" name="min_convexity_SpinBox">
+            <property name="readOnly">
+             <bool>false</bool>
+            </property>
+            <property name="decimals">
+             <number>4</number>
+            </property>
+            <property name="maximum">
+             <double>10000.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="label_19">
+            <property name="text">
+             <string>Convexity</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="2">
+           <widget class="QDoubleSpinBox" name="max_area_SpinBox">
+            <property name="readOnly">
+             <bool>false</bool>
+            </property>
+            <property name="decimals">
+             <number>4</number>
+            </property>
+            <property name="maximum">
+             <double>10000.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QDoubleSpinBox" name="min_area_SpinBox">
+            <property name="readOnly">
+             <bool>false</bool>
+            </property>
+            <property name="decimals">
+             <number>4</number>
+            </property>
+            <property name="maximum">
+             <double>10000.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="label_20">
+            <property name="text">
+             <string>Eccentricity</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="2">
+           <widget class="QDoubleSpinBox" name="max_convexity_SpinBox">
+            <property name="readOnly">
+             <bool>false</bool>
+            </property>
+            <property name="decimals">
+             <number>4</number>
+            </property>
+            <property name="maximum">
+             <double>10000.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_21">
+            <property name="text">
+             <string>Parameter</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QDoubleSpinBox" name="min_eccentricity_SpinBox">
+            <property name="readOnly">
+             <bool>false</bool>
+            </property>
+            <property name="decimals">
+             <number>4</number>
+            </property>
+            <property name="maximum">
+             <double>10000.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_17">
+            <property name="text">
+             <string>Circularity</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QPushButton" name="manual_filter_button">
+         <property name="geometry">
+          <rect>
+           <x>370</x>
+           <y>110</y>
+           <width>93</width>
+           <height>28</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Filter</string>
+         </property>
+        </widget>
+       </widget>
        <widget class="QWidget" name="analyze_tab">
         <attribute name="title">
          <string>Analyze</string>
@@ -201,19 +418,6 @@
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout_10">
-          <item row="0" column="2">
-           <spacer name="horizontalSpacer">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
           <item row="0" column="0">
            <widget class="QLabel" name="micronsPixelLabel">
             <property name="text">
@@ -221,26 +425,7 @@
             </property>
            </widget>
           </item>
-          <item row="0" column="1">
-           <widget class="QDoubleSpinBox" name="microns_per_pixel_SpinBox">
-            <property name="decimals">
-             <number>3</number>
-            </property>
-            <property name="minimum">
-             <double>0.001000000000000</double>
-            </property>
-            <property name="maximum">
-             <double>10000.000000000000000</double>
-            </property>
-            <property name="singleStep">
-             <double>0.010000000000000</double>
-            </property>
-            <property name="value">
-             <double>1.000000000000000</double>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0" rowspan="2" colspan="3">
+          <item row="3" column="0" colspan="3">
            <widget class="QGroupBox" name="groupBox">
             <property name="title">
              <string>Classification Validation</string>
@@ -262,12 +447,18 @@
                 </property>
                </widget>
               </item>
+              <item row="0" column="1">
+               <layout class="QGridLayout" name="gridLayout_11"/>
+              </item>
               <item row="1" column="0">
                <widget class="QLabel" name="label_7">
                 <property name="text">
                  <string>Automatically Labeled Image</string>
                 </property>
                </widget>
+              </item>
+              <item row="1" column="1">
+               <layout class="QGridLayout" name="gridLayout_12"/>
               </item>
               <item row="2" column="0">
                <widget class="QLabel" name="label_8">
@@ -283,10 +474,24 @@
                 </property>
                </widget>
               </item>
+              <item row="3" column="1">
+               <widget class="QLabel" name="true_neg_label">
+                <property name="text">
+                 <string/>
+                </property>
+               </widget>
+              </item>
               <item row="4" column="0">
                <widget class="QLabel" name="label_10">
                 <property name="text">
                  <string>False Positives</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="1">
+               <widget class="QLabel" name="false_pos_label">
+                <property name="text">
+                 <string/>
                 </property>
                </widget>
               </item>
@@ -297,10 +502,24 @@
                 </property>
                </widget>
               </item>
+              <item row="5" column="1">
+               <widget class="QLabel" name="false_neg_label">
+                <property name="text">
+                 <string/>
+                </property>
+               </widget>
+              </item>
               <item row="6" column="0">
                <widget class="QLabel" name="label_12">
                 <property name="text">
                  <string>Precision</string>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="1">
+               <widget class="QLabel" name="precision_label">
+                <property name="text">
+                 <string/>
                 </property>
                </widget>
               </item>
@@ -318,47 +537,6 @@
                 </property>
                </widget>
               </item>
-              <item row="6" column="1">
-               <widget class="QLabel" name="precision_label">
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
-              </item>
-              <item row="5" column="1">
-               <widget class="QLabel" name="false_neg_label">
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="1">
-               <widget class="QLabel" name="false_pos_label">
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="1">
-               <widget class="QLabel" name="true_neg_label">
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="1">
-               <widget class="QLabel" name="true_pos_label">
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="1">
-               <layout class="QGridLayout" name="gridLayout_11"/>
-              </item>
-              <item row="1" column="1">
-               <layout class="QGridLayout" name="gridLayout_12"/>
-              </item>
               <item row="8" column="0">
                <widget class="QLabel" name="f1_score">
                 <property name="text">
@@ -373,9 +551,93 @@
                 </property>
                </widget>
               </item>
+              <item row="2" column="1">
+               <widget class="QLabel" name="true_pos_label">
+                <property name="text">
+                 <string/>
+                </property>
+               </widget>
+              </item>
              </layout>
             </widget>
            </widget>
+          </item>
+          <item row="0" column="2">
+           <spacer name="horizontalSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="0" column="1">
+           <widget class="QDoubleSpinBox" name="microns_per_pixel_SpinBox">
+            <property name="mouseTracking">
+             <bool>false</bool>
+            </property>
+            <property name="decimals">
+             <number>3</number>
+            </property>
+            <property name="minimum">
+             <double>0.001000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>10000.000000000000000</double>
+            </property>
+            <property name="singleStep">
+             <double>0.010000000000000</double>
+            </property>
+            <property name="value">
+             <double>1.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="micronsPixelLabel_2">
+            <property name="text">
+             <string>Resize factor</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QDoubleSpinBox" name="resize_factor_SpinBox">
+            <property name="mouseTracking">
+             <bool>false</bool>
+            </property>
+            <property name="decimals">
+             <number>3</number>
+            </property>
+            <property name="minimum">
+             <double>0.001000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>10000.000000000000000</double>
+            </property>
+            <property name="singleStep">
+             <double>0.010000000000000</double>
+            </property>
+            <property name="value">
+             <double>1.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2">
+           <spacer name="horizontalSpacer_3">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
           </item>
          </layout>
         </widget>
@@ -452,6 +714,72 @@
            </widget>
           </item>
          </layout>
+        </widget>
+       </widget>
+       <widget class="QWidget" name="tab_5">
+        <attribute name="title">
+         <string>Flourescence Overlay</string>
+        </attribute>
+        <widget class="QWidget" name="gridLayoutWidget_3">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>30</y>
+           <width>381</width>
+           <height>51</height>
+          </rect>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_test"/>
+        </widget>
+        <widget class="QLabel" name="label_22">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>10</y>
+           <width>391</width>
+           <height>16</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Select classifier image of interest to mesaure overlay intensity on</string>
+         </property>
+        </widget>
+        <widget class="QWidget" name="gridLayoutWidget_4">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>110</y>
+           <width>901</width>
+           <height>501</height>
+          </rect>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_flr_img"/>
+        </widget>
+        <widget class="QPushButton" name="save_flr_button">
+         <property name="geometry">
+          <rect>
+           <x>640</x>
+           <y>60</y>
+           <width>93</width>
+           <height>28</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Save Flr Data</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_23">
+         <property name="geometry">
+          <rect>
+           <x>510</x>
+           <y>40</y>
+           <width>391</width>
+           <height>16</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Save button that also outputs roi_sattes. Used for overlay validation</string>
+         </property>
         </widget>
        </widget>
       </widget>

@@ -31,6 +31,8 @@ else:
 
 
 from .marking_binary_window import Classifier_Window
+from .marking_binary_window import *
+#from .marking_binary_window import Classifier_Window
 from . import mysql_interface
 
 def show_label_img(binary_img):
@@ -142,6 +144,7 @@ def get_border_between_two_props(prop1, prop2):
     return np.argwhere(border) + top_left
 
 def get_new_I(I, thresh1=.20, thresh2=.30):
+    resizeFactor = g.myoquant.algorithm_gui.resize_factor_SpinBox.value()
     label_im_1 = label(I < thresh1, connectivity=2)
     label_im_2 = label(I < thresh2, connectivity=2)
     props_1 = measure.regionprops(label_im_1)
@@ -155,7 +158,9 @@ def get_new_I(I, thresh1=.20, thresh2=.30):
         prop1 = props_1[roi_num]
         x, y = prop1.coords[0,:]
         prop2 = props_2[label_im_2[x, y] - 1]
-        if prop1.area > 65:
+
+        if prop1.area > 65 * resizeFactor :
+            #this is the new, faster, calculation
             area_ratio = prop2.area/prop1.area
             if area_ratio > 1.2:
                 border_idx = get_border_between_two_props(prop1, prop2)
@@ -164,8 +169,6 @@ def get_new_I(I, thresh1=.20, thresh2=.30):
     I_new[np.where(borders)] = 2
     #I_new = I + .2 * borders
     return I_new
-
-
 
 
 class Myoquant():
@@ -199,6 +202,8 @@ class Myoquant():
         gui.fill_boundaries_button.pressed.connect(self.fill_boundaries_button)
         gui.SVM_button.pressed.connect(self.run_SVM_classification_on_labeled_image)
         gui.SVM_saved_button.pressed.connect(self.run_SVM_classification_on_saved_training_data)
+        gui.manual_filter_button.pressed.connect(self.hard_set_update)
+        gui.save_flr_button.pressed.connect(self.save_fiber_data_flr)
 
         self.validation_manual_selector = WindowSelector()
         self.validation_manual_selector.valueChanged.connect(self.validate)
@@ -206,6 +211,11 @@ class Myoquant():
         self.validation_automatic_selector = WindowSelector()
         self.validation_automatic_selector.valueChanged.connect(self.validate)
         gui.gridLayout_12.addWidget(self.validation_automatic_selector)
+
+        self.flr_window_selector= WindowSelector()
+        self.flr_window_selector.valueChanged.connect(self.add_flr_img)
+        gui.gridLayout_test.addWidget(self.flr_window_selector)
+
 
         gui.save_fiber_button.pressed.connect(self.save_fiber_data)
         gui.mysql_export_button.pressed.connect(self.mysql_export_fiber_data)
@@ -361,21 +371,49 @@ class Myoquant():
 
     def save_fiber_data(self):
         scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
+        resizeFactor = g.myoquant.algorithm_gui.resize_factor_SpinBox.value()
         if not isinstance(g.win, Classifier_Window):
             g.alert('Make sure the window containing the data you are trying to export is selected (highlighted in green).')
             return
         X = g.win.get_extended_features_array()
         X = X[g.win.roi_states == 1]
-        X[:, 0] /= scaleFactor**2  # area
-        X[:, 4] *= scaleFactor  # minor axis
+        X[:, 0] /= (scaleFactor**2 * resizeFactor**2) # area
+        X[:, 5] *= scaleFactor / resizeFactor  # Minferet
+
         fileSaveAsName = save_file_gui('Save file as...', filetypes='.xlsx')
         workbook = xlsxwriter.Workbook(fileSaveAsName)
         worksheet = workbook.add_worksheet()
-        header = ['Area', 'Eccentricity', 'Convexity', 'Circularity', 'ROI #', 'Minor axis length']
+        header = ['Area', 'Eccentricity', 'Convexity', 'Circularity', 'ROI #', 'Minferet']
         worksheet.write_row(0, 0, header)
         for row_idx, row_data in enumerate(X):
             worksheet.write_row(row_idx + 1, 0, row_data)
         workbook.close()
+
+    def save_fiber_data_flr(self):
+        scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
+        resizeFactor = g.myoquant.algorithm_gui.resize_factor_SpinBox.value()
+        if not isinstance(g.win, Classifier_Window):
+            g.alert(
+                'Make sure the window containing the data you are trying to export is selected (highlighted in green).')
+            return
+        X = g.win.get_extended_features_array()
+        X = X[np.logical_or(g.win.roi_states == 1, g.win.roi_states == 3)]
+        exported_rois = np.compress(np.logical_or(g.win.roi_states == 1, g.win.roi_states == 3), g.win.roi_states*1)
+        exported_rois.shape = (len(X),1)
+        X = np.concatenate((X, exported_rois), axis=1)
+
+        X[:, 0] /= (scaleFactor ** 2 * resizeFactor ** 2)  # area
+        X[:, 5] *= scaleFactor / resizeFactor  # Minferet
+
+        fileSaveAsName = save_file_gui('Save file as...', filetypes='.xlsx')
+        workbook = xlsxwriter.Workbook(fileSaveAsName)
+        worksheet = workbook.add_worksheet()
+        header = ['Area', 'Eccentricity', 'Convexity', 'Circularity', 'ROI #', 'Minferet','Centronucleate (yellow)']
+        worksheet.write_row(0, 0, header)
+        for row_idx, row_data in enumerate(X):
+            worksheet.write_row(row_idx + 1, 0, row_data)
+        workbook.close()
+
 
     def mysql_export_fiber_data(self):
         scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
@@ -396,6 +434,39 @@ class Myoquant():
         if self.classifier_window is not None:
             self.classifier_window.close()
         event.accept() # let the window close
+
+    def hard_set_update(self):
+        print('Manually filtering...')
+        result_win = Classifier_Window(self.classifier_window.image)
+        X = g.win.get_extended_features_array()
+        max_area = g.myoquant.algorithm_gui.max_area_SpinBox.value()
+        min_area = g.myoquant.algorithm_gui.min_area_SpinBox.value()
+        roi_states = self.roiStates
+
+        # Area
+        roi_states[np.logical_or(X[:, 0] >max_area, X[:,0] < min_area)] = 2
+
+        self.roiStates = roi_states
+        result_win.set_roi_states(roi_states)
+        #self.algorithm_gui.model_params_label.setText('')
+
+        # Eccentricity
+        # roi_states[X[:, 1] < 15] = 2
+        # Convexity
+        # roi_states[X[:, 2] < 15] = 2
+        # Circularity
+        # roi_states[X[:, 3] < 15] = 2
+
+    def add_flr_img(self):
+        print('Adding image for flourescence analysis...')
+        if self.classifier_window is not None:
+            self.algorithm_gui.gridLayout_flr_img.removeWidget(self.classifier_window)
+            self.classifier_window.setParent(None)
+            self.classifier_window.close()
+        self.classifier_window = Classifier_Window(self.flr_window_selector.window.image)
+        self.algorithm_gui.gridLayout_flr_img.addWidget(self.classifier_window)
+        #self.algorithm_gui.analyze_tab_widget.setCurrentIndex(2)
+        Classifier_Window(g.win.image,'Hi')
 
 myoquant = Myoquant()
 g.myoquant = myoquant
