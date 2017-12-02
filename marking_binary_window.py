@@ -3,6 +3,7 @@ from flika.window import Window
 from flika.utils.misc import save_file_gui, open_file_gui
 from flika import global_vars as g
 from skimage import measure
+from skimage import morphology
 from skimage.measure import label, find_contours
 from qtpy import QtWidgets, QtCore
 import numpy as np
@@ -92,6 +93,52 @@ class Classifier_Window(Window):
                 x, y = self.props[roi_num].coords.T
                 self.colored_img[x, y] = color
                 self.update_image(self.colored_img)
+
+                #Start of test code, to be deleted
+
+                #
+                # for i in range(len(self.props)):
+                #
+                #     individualProp = self.props[i]
+                #
+                #     targetSize = .40
+                #     targetArea = individualProp.area * targetSize
+                #
+                #     if(targetArea > 10):
+                #         while individualProp.area > targetArea:
+                #             label_im_1 = label(morphology.binary_erosion(individualProp.image, selem=None), connectivity=2)
+                #             newProps = measure.regionprops(label_im_1)
+                #
+                #             if(len(newProps) > 0):
+                #                 tempProp = newProps[0]
+                #             else:
+                #                 break
+                #
+                #             if(tempProp.area > 25):
+                #                 individualProp = tempProp
+                #             else:
+                #                 break
+                #
+                #         #Calculate the difference between the original bbox and the new bbox
+                #         originalX, originalY = self.props[i].centroid
+                #         newX, newY = individualProp.centroid
+                #         differenceX = newX - originalX
+                #         differenceY = newY - originalY
+                #
+                #         x, y = individualProp.coords.T
+                #
+                #         #Updated each coordinate with an adjusted value, accounting for the difference
+                #         for i in range(len(x)):
+                #             x[i] = x[i] + (-1 * differenceX)
+                #
+                #         for i in range(len(y)):
+                #             y[i] = y[i] + (-1 * differenceY)
+                #
+                #         self.colored_img[x, y] = Classifier_Window.RED
+                #         self.update_image(self.colored_img)
+
+                #End of test code, to be deleted
+
         super().mouseClickEvent(ev)
 
     def update_image(self, image):

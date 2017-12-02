@@ -127,8 +127,6 @@ def plot_regression_results(X1, X2, y):
     s1.addPoints(x1, x2, size=10, pen=None, brush=pg.mkBrush(255, 0, 0, 255))
 
 def get_border_between_two_props(prop1, prop2):
-    #this is the old, slower, calculation
-    #I2 = np.copy(prop2.image)
     I2 = prop2.image
     I1 = np.zeros_like(I2)
     bbox = np.array(prop2.bbox)
@@ -150,8 +148,6 @@ def get_new_I(I, thresh1=.20, thresh2=.30):
     props_2 = measure.regionprops(label_im_2)
     borders = np.zeros_like(I)
 
-    print("this is a test")
-
     #  The maximum of the labeled image is the number of contiguous regions, or ROIs.
     nROIs = np.max(label_im_1)
     for roi_num in np.arange(nROIs):
@@ -160,7 +156,6 @@ def get_new_I(I, thresh1=.20, thresh2=.30):
         x, y = prop1.coords[0,:]
         prop2 = props_2[label_im_2[x, y] - 1]
         if prop1.area > 65:
-            #this is the new, faster, calculation
             area_ratio = prop2.area/prop1.area
             if area_ratio > 1.2:
                 border_idx = get_border_between_two_props(prop1, prop2)
