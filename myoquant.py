@@ -183,6 +183,11 @@ class Myoquant():
         self.roiStates = None
         self.classifier_window = None
         self.lines_win = None
+        self.intensity_img = None
+        self.labeled_img = None
+
+
+
         gui = uic.loadUi(os.path.join(os.path.dirname(__file__), 'myoquant.ui'))
         self.algorithm_gui = gui
         gui.show()
@@ -195,7 +200,7 @@ class Myoquant():
         self.threshold1_slider.valueChanged.connect(self.threshold_slider_changed)
         self.threshold2_slider = SliderLabel(2)
         self.threshold2_slider.setRange(0, 1)
-        self.threshold2_slider.setValue(.8)
+        self.threshold2_slider.setValue(.1)
         self.threshold2_slider.valueChanged.connect(self.threshold_slider_changed)
         gui.gridLayout_9.addWidget(self.threshold1_slider)
         gui.gridLayout_16.addWidget(self.threshold2_slider)
@@ -203,7 +208,8 @@ class Myoquant():
         gui.SVM_button.pressed.connect(self.run_SVM_classification_on_labeled_image)
         gui.SVM_saved_button.pressed.connect(self.run_SVM_classification_on_saved_training_data)
         gui.manual_filter_button.pressed.connect(self.hard_set_update)
-        gui.save_flr_button.pressed.connect(self.save_fiber_data_flr)
+        #gui.save_flr_button.pressed.connect(self.save_fiber_data_flr)
+        gui.save_flr_button.pressed.connect(self.save_flr)
 
         self.validation_manual_selector = WindowSelector()
         self.validation_manual_selector.valueChanged.connect(self.validate)
@@ -219,6 +225,14 @@ class Myoquant():
         self.dapi_window_selector = WindowSelector()
         self.dapi_window_selector.valueChanged.connect(self.add_dapi_img)
         gui.gridLayout_Import_DAPI.addWidget(self.dapi_window_selector)
+
+        self.intensity_img_selector= WindowSelector()
+        self.intensity_img_selector.valueChanged.connect(self.select_intensity_image)
+        gui.gridLayout_intensity_image.addWidget(self.intensity_img_selector)
+
+        self.labeled_img_selector= WindowSelector()
+        self.labeled_img_selector.valueChanged.connect(self.select_labeled_image)
+        gui.gridLayout_labeled_image.addWidget(self.labeled_img_selector)
 
         gui.save_fiber_button.pressed.connect(self.save_fiber_data)
         gui.mysql_export_button.pressed.connect(self.mysql_export_fiber_data)
@@ -380,43 +394,67 @@ class Myoquant():
             return
         X = g.win.get_extended_features_array()
         X = X[g.win.roi_states == 1]
-        X[:, 0] /= (scaleFactor**2 * resizeFactor**2) # area
-        X[:, 5] *= scaleFactor / resizeFactor  # Minferet
-
+        X[:, 1] /= (scaleFactor**2 * resizeFactor**2) # area
+        X[:, 2] *= scaleFactor / resizeFactor  # Minferet
         fileSaveAsName = save_file_gui('Save file as...', filetypes='.xlsx')
         workbook = xlsxwriter.Workbook(fileSaveAsName)
         worksheet = workbook.add_worksheet()
-        header = ['Area', 'Eccentricity', 'Convexity', 'Circularity', 'ROI #', 'Minferet']
+        header = ['ROI #','Area', 'Minferet','MFI']
+        # header = ['Area', 'Eccentricity', 'Convexity', 'Circularity', 'ROI #', 'Minferet','MFI']
         worksheet.write_row(0, 0, header)
         for row_idx, row_data in enumerate(X):
             worksheet.write_row(row_idx + 1, 0, row_data)
         workbook.close()
 
-    def save_fiber_data_flr(self):
-        scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
-        resizeFactor = g.myoquant.algorithm_gui.resize_factor_SpinBox.value()
-        if not isinstance(g.win, Classifier_Window):
-            g.alert(
-                'Make sure the window containing the data you are trying to export is selected (highlighted in green).')
-            return
-        X = g.win.get_extended_features_array()
-        X = X[np.logical_or(g.win.roi_states == 1, g.win.roi_states == 3)]
-        exported_rois = np.compress(np.logical_or(g.win.roi_states == 1, g.win.roi_states == 3), g.win.roi_states*1)
-        exported_rois.shape = (len(X),1)
-        X = np.concatenate((X, exported_rois), axis=1)
+    # def master_save(self):
+    #     scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
+    #     resizeFactor = g.myoquant.algorithm_gui.resize_factor_SpinBox.value()
+    #     if not isinstance(g.win, Classifier_Window):
+    #         g.alert(
+    #             'Make sure the window containing the data you are trying to export is selected (highlighted in green).')
+    #         return
+    #     X = g.win.get_extended_features_array()
+    #     X = X[np.logical_or(g.win.roi_states == 1, g.win.roi_states == 3)]
+    #     exported_rois = np.compress(np.logical_or(g.win.roi_states == 1, g.win.roi_states == 3), g.win.roi_states * 1)
+    #     exported_rois.shape = (len(X), 1)
+    #
+    #     X = np.concatenate((X, exported_rois), axis=1)
+    #
+    #
+    #
+    #
+    #
+    #     X[:, 0] /= (scaleFactor ** 2 * resizeFactor ** 2)  # area
+    #     X[:, 5] *= scaleFactor / resizeFactor  # Minferet
+    #
+    #     fileSaveAsName = save_file_gui('Save file as...', filetypes='.xlsx')
+    #     workbook = xlsxwriter.Workbook(fileSaveAsName)
+    #     worksheet = workbook.add_worksheet()
+    #     header = ['Area', 'Eccentricity', 'Convexity', 'Circularity', 'ROI #', 'Minferet','Yellow' , Overlay Intensity']
+    #     worksheet.write_row(0, 0, header)
+    #     for row_idx, row_data in enumerate(X):
+    #         worksheet.write_row(row_idx + 1, 0, row_data)
+    #     workbook.close()
 
-        X[:, 0] /= (scaleFactor ** 2 * resizeFactor ** 2)  # area
-        X[:, 5] *= scaleFactor / resizeFactor  # Minferet
-
+    def save_flr(self):
+        if self.intensity_img is None:
+            g.alert('Make sure an intensity image is selected')
+        if self.labeled_img is None:
+            g.alert('Make sure a classified, labeled image is selected')
+        Y = measure.regionprops(self.labeled_img, self.intensity_img)
+        rois = np.max(self.labeled_img)
+        roi_num = np.arange(rois)
+        intensity = np.array([p.mean_intensity for p in Y])
+        X = np.stack((roi_num,intensity),1)
+        X = X[self.roiStates == 1]
         fileSaveAsName = save_file_gui('Save file as...', filetypes='.xlsx')
         workbook = xlsxwriter.Workbook(fileSaveAsName)
         worksheet = workbook.add_worksheet()
-        header = ['Area', 'Eccentricity', 'Convexity', 'Circularity', 'ROI #', 'Minferet','Centronucleate (yellow)']
+        header = ['ROI #','Overlay Intensity']
         worksheet.write_row(0, 0, header)
         for row_idx, row_data in enumerate(X):
             worksheet.write_row(row_idx + 1, 0, row_data)
         workbook.close()
-
 
     def mysql_export_fiber_data(self):
         scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
@@ -484,6 +522,14 @@ class Myoquant():
         self.classifier_window.set_roi_states(self.roiStates)
         self.algorithm_gui.run_erosion_button.pressed.connect(self.classifier_window.run_erosion)
 
+    def select_intensity_image(self):
+        print('Intensity image selected.')
+        self.intensity_img = self.intensity_img_selector.window.image
+
+    def select_labeled_image(self):
+        print('Labeled image selected.')
+        self.labeled_img = self.labeled_img_selector.window.labeled_img
+        self.roiStates = g.win.roi_states
 
 myoquant = Myoquant()
 g.myoquant = myoquant

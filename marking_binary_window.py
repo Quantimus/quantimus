@@ -138,13 +138,22 @@ class Classifier_Window(Window):
     def get_extended_features_array(self):
         if self.features_array is None:
             self.features_array = self.get_features_array()
-        X = np.copy(self.features_array)
+        #X = np.copy(self.features_array)
         #minor_axis = np.array([p.minor_axis_length for p in self.props])
         min_ferets = np.array([calc_min_feret_diameter(g.win.props)]).T
         roi_num = np.arange(self.nROIs)
-        X = np.concatenate((X, roi_num[:, np.newaxis], min_ferets), 1)
+        area = self.features_array[:,0]
+        #X = np.concatenate((X, roi_num[:, np.newaxis], min_ferets), 1)
+        X = np.concatenate((roi_num[:, np.newaxis], area[:, np.newaxis], min_ferets), 1)
+
+        if g.myoquant.intensity_img is not None and g.myoquant.labeled_img is not None:
+            Y = measure.regionprops(g.myoquant.labeled_img, g.myoquant.intensity_img)
+            mfi = np.array([p.mean_intensity for p in Y])
+            X = np.concatenate((X, mfi[:,np.newaxis]),1)
         return X
 
+
+    # if g.myoquant.intensity_img is not None:
     def save_classifications(self):
         filename = save_file_gui("Save classifications", filetypes='*.json')
         if filename is None:
