@@ -212,10 +212,13 @@ class Myoquant():
         self.validation_automatic_selector.valueChanged.connect(self.validate)
         gui.gridLayout_12.addWidget(self.validation_automatic_selector)
 
-        self.flr_window_selector= WindowSelector()
+        self.flr_window_selector = WindowSelector()
         self.flr_window_selector.valueChanged.connect(self.add_flr_img)
         gui.gridLayout_test.addWidget(self.flr_window_selector)
 
+        self.dapi_window_selector = WindowSelector()
+        self.dapi_window_selector.valueChanged.connect(self.add_dapi_img)
+        gui.gridLayout_Import_DAPI.addWidget(self.dapi_window_selector)
 
         gui.save_fiber_button.pressed.connect(self.save_fiber_data)
         gui.mysql_export_button.pressed.connect(self.mysql_export_fiber_data)
@@ -466,7 +469,21 @@ class Myoquant():
         self.classifier_window = Classifier_Window(self.flr_window_selector.window.image)
         self.algorithm_gui.gridLayout_flr_img.addWidget(self.classifier_window)
         #self.algorithm_gui.analyze_tab_widget.setCurrentIndex(2)
-        Classifier_Window(g.win.image,'Hi')
+        Classifier_Window(g.win.image,'Flourescence Analysis')
+
+    def add_dapi_img(self):
+        print('Adding image for DAPI analysis...')
+        #Add/Remove images as necessary to display the appropriate images in the window
+        if self.classifier_window is not None:
+            self.algorithm_gui.gridLayout_DAPI_Image.removeWidget(self.classifier_window)
+            self.classifier_window.setParent(None)
+            self.classifier_window.close()
+        self.classifier_window = Classifier_Window(self.dapi_window_selector.window.image)
+        self.algorithm_gui.gridLayout_DAPI_Image.addWidget(self.classifier_window)
+        #Update the coloring of the image to contain green and red
+        self.classifier_window.set_roi_states(self.roiStates)
+        self.algorithm_gui.run_erosion_button.pressed.connect(self.classifier_window.run_erosion)
+
 
 myoquant = Myoquant()
 g.myoquant = myoquant
