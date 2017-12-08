@@ -253,7 +253,7 @@ class Classifier_Window(Window):
                 for i in range(len(y)):
                     y[i] = y[i] + (-1 * differenceY)
 
-                self.colored_img[x, y] = Classifier_Window.ORANGE$
+                self.colored_img[x, y] = Classifier_Window.ORANGE
                 self.update_image(self.colored_img)
 
 
