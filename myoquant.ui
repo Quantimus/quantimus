@@ -25,7 +25,7 @@
         </sizepolicy>
        </property>
        <property name="currentIndex">
-        <number>5</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="tab_2">
         <attribute name="title">
@@ -642,6 +642,85 @@
          </layout>
         </widget>
        </widget>
+       <widget class="QWidget" name="tab_5">
+        <attribute name="title">
+         <string>Flourescence Overlay</string>
+        </attribute>
+        <widget class="QWidget" name="gridLayoutWidget_3">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>30</y>
+           <width>371</width>
+           <height>61</height>
+          </rect>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_intensity_image"/>
+        </widget>
+        <widget class="QLabel" name="label_22">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>10</y>
+           <width>391</width>
+           <height>16</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Select single-channeled intensity overlay image</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="save_flr_button">
+         <property name="geometry">
+          <rect>
+           <x>640</x>
+           <y>60</y>
+           <width>93</width>
+           <height>28</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Save Flr Data</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_23">
+         <property name="geometry">
+          <rect>
+           <x>480</x>
+           <y>40</y>
+           <width>421</width>
+           <height>21</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Save button that outputs ROI numbers and intensity of overlayed image</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_24">
+         <property name="geometry">
+          <rect>
+           <x>30</x>
+           <y>100</y>
+           <width>391</width>
+           <height>16</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Select classifier window containing ROI's </string>
+         </property>
+        </widget>
+        <widget class="QWidget" name="gridLayoutWidget_4">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>120</y>
+           <width>371</width>
+           <height>71</height>
+          </rect>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_labeled_image"/>
+        </widget>
+       </widget>
        <widget class="QWidget" name="tab_4">
         <attribute name="title">
          <string>Input/Output</string>
@@ -714,72 +793,6 @@
            </widget>
           </item>
          </layout>
-        </widget>
-       </widget>
-       <widget class="QWidget" name="tab_5">
-        <attribute name="title">
-         <string>Flourescence Overlay</string>
-        </attribute>
-        <widget class="QWidget" name="gridLayoutWidget_3">
-         <property name="geometry">
-          <rect>
-           <x>20</x>
-           <y>30</y>
-           <width>381</width>
-           <height>51</height>
-          </rect>
-         </property>
-         <layout class="QGridLayout" name="gridLayout_test"/>
-        </widget>
-        <widget class="QLabel" name="label_22">
-         <property name="geometry">
-          <rect>
-           <x>20</x>
-           <y>10</y>
-           <width>391</width>
-           <height>16</height>
-          </rect>
-         </property>
-         <property name="text">
-          <string>Select classifier image of interest to mesaure overlay intensity on</string>
-         </property>
-        </widget>
-        <widget class="QWidget" name="gridLayoutWidget_4">
-         <property name="geometry">
-          <rect>
-           <x>20</x>
-           <y>110</y>
-           <width>901</width>
-           <height>501</height>
-          </rect>
-         </property>
-         <layout class="QGridLayout" name="gridLayout_flr_img"/>
-        </widget>
-        <widget class="QPushButton" name="save_flr_button">
-         <property name="geometry">
-          <rect>
-           <x>640</x>
-           <y>60</y>
-           <width>93</width>
-           <height>28</height>
-          </rect>
-         </property>
-         <property name="text">
-          <string>Save Flr Data</string>
-         </property>
-        </widget>
-        <widget class="QLabel" name="label_23">
-         <property name="geometry">
-          <rect>
-           <x>510</x>
-           <y>40</y>
-           <width>391</width>
-           <height>16</height>
-          </rect>
-         </property>
-         <property name="text">
-          <string>Save button that also outputs roi_sattes. Used for overlay validation</string>
-         </property>
         </widget>
        </widget>
       </widget>
