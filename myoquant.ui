@@ -28,13 +28,9 @@
         </sizepolicy>
        </property>
        <property name="currentIndex">
-<<<<<<< HEAD
-        <number>6</number>
-=======
-        <number>0</number>
->>>>>>> 29a18175916612e70ad6df8eac39285fb23398a3
+        <number>5</number>
        </property>
-       <widget class="QWidget" name="tab_2">
+       <widget class="QWidget" name="thresholds_tab">
         <attribute name="title">
          <string>Set Thresholds</string>
         </attribute>
@@ -103,7 +99,7 @@
             <item row="1" column="0">
              <layout class="QGridLayout" name="gridLayout_4">
               <item row="2" column="1">
-               <layout class="QGridLayout" name="gridLayout_16"/>
+               <layout class="QGridLayout" name="gridLayout_threshold_two"/>
               </item>
               <item row="1" column="0">
                <widget class="QLabel" name="label">
@@ -113,7 +109,7 @@
                </widget>
               </item>
               <item row="1" column="1">
-               <layout class="QGridLayout" name="gridLayout_9"/>
+               <layout class="QGridLayout" name="gridLayout_threshold_one"/>
               </item>
               <item row="2" column="0">
                <widget class="QLabel" name="label_3">
@@ -129,7 +125,7 @@
          </item>
         </layout>
        </widget>
-       <widget class="QWidget" name="tab_3">
+       <widget class="QWidget" name="regression_tab">
         <attribute name="title">
          <string>Set Regression Parameters</string>
         </attribute>
@@ -194,17 +190,17 @@
          </item>
         </layout>
        </widget>
-       <widget class="QWidget" name="tab">
+       <widget class="QWidget" name="post_svm_tab">
         <attribute name="title">
          <string>Post SVM Filtering</string>
         </attribute>
         <widget class="QLabel" name="label_14">
          <property name="geometry">
           <rect>
-           <x>30</x>
-           <y>20</y>
+           <x>10</x>
+           <y>16</y>
            <width>211</width>
-           <height>16</height>
+           <height>20</height>
           </rect>
          </property>
          <property name="text">
@@ -214,7 +210,7 @@
         <widget class="QWidget" name="gridLayoutWidget_2">
          <property name="geometry">
           <rect>
-           <x>30</x>
+           <x>10</x>
            <y>50</y>
            <width>291</width>
            <height>157</height>
@@ -400,7 +396,7 @@
         <widget class="QPushButton" name="manual_filter_button">
          <property name="geometry">
           <rect>
-           <x>370</x>
+           <x>350</x>
            <y>110</y>
            <width>93</width>
            <height>28</height>
@@ -420,8 +416,8 @@
           <rect>
            <x>10</x>
            <y>10</y>
-           <width>501</width>
-           <height>291</height>
+           <width>601</width>
+           <height>481</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout_10">
@@ -432,145 +428,21 @@
             </property>
            </widget>
           </item>
-          <item row="3" column="0" colspan="3">
-           <widget class="QGroupBox" name="groupBox">
-            <property name="title">
-             <string>Classification Validation</string>
-            </property>
-            <widget class="QWidget" name="formLayoutWidget">
-             <property name="geometry">
-              <rect>
-               <x>9</x>
-               <y>19</y>
-               <width>481</width>
-               <height>241</height>
-              </rect>
-             </property>
-             <layout class="QFormLayout" name="validation_layout">
-              <item row="0" column="0">
-               <widget class="QLabel" name="label_6">
-                <property name="text">
-                 <string>Manually Labeled Image</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="1">
-               <layout class="QGridLayout" name="gridLayout_11"/>
-              </item>
-              <item row="1" column="0">
-               <widget class="QLabel" name="label_7">
-                <property name="text">
-                 <string>Automatically Labeled Image</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="1">
-               <layout class="QGridLayout" name="gridLayout_12"/>
-              </item>
-              <item row="2" column="0">
-               <widget class="QLabel" name="label_8">
-                <property name="text">
-                 <string>True Positives</string>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="0">
-               <widget class="QLabel" name="label_9">
-                <property name="text">
-                 <string>True Negatives</string>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="1">
-               <widget class="QLabel" name="true_neg_label">
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="0">
-               <widget class="QLabel" name="label_10">
-                <property name="text">
-                 <string>False Positives</string>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="1">
-               <widget class="QLabel" name="false_pos_label">
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
-              </item>
-              <item row="5" column="0">
-               <widget class="QLabel" name="label_11">
-                <property name="text">
-                 <string>False Negatives</string>
-                </property>
-               </widget>
-              </item>
-              <item row="5" column="1">
-               <widget class="QLabel" name="false_neg_label">
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
-              </item>
-              <item row="6" column="0">
-               <widget class="QLabel" name="label_12">
-                <property name="text">
-                 <string>Precision</string>
-                </property>
-               </widget>
-              </item>
-              <item row="6" column="1">
-               <widget class="QLabel" name="precision_label">
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
-              </item>
-              <item row="7" column="0">
-               <widget class="QLabel" name="label_13">
-                <property name="text">
-                 <string>Recall</string>
-                </property>
-               </widget>
-              </item>
-              <item row="7" column="1">
-               <widget class="QLabel" name="recall_label">
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
-              </item>
-              <item row="8" column="0">
-               <widget class="QLabel" name="f1_score">
-                <property name="text">
-                 <string>F1 Score</string>
-                </property>
-               </widget>
-              </item>
-              <item row="8" column="1">
-               <widget class="QLabel" name="f1_score_label">
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="1">
-               <widget class="QLabel" name="true_pos_label">
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
-           </widget>
-          </item>
           <item row="0" column="2">
            <spacer name="horizontalSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="1" column="2">
+           <spacer name="horizontalSpacer_3">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>
@@ -604,13 +476,6 @@
             </property>
            </widget>
           </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="micronsPixelLabel_2">
-            <property name="text">
-             <string>Resize factor</string>
-            </property>
-           </widget>
-          </item>
           <item row="1" column="1">
            <widget class="QDoubleSpinBox" name="resize_factor_SpinBox">
             <property name="mouseTracking">
@@ -633,111 +498,266 @@
             </property>
            </widget>
           </item>
-          <item row="1" column="2">
-           <spacer name="horizontalSpacer_3">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
+          <item row="1" column="0">
+           <widget class="QLabel" name="micronsPixelLabel_2">
+            <property name="text">
+             <string>Resize factor</string>
             </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
+           </widget>
+          </item>
+          <item row="3" column="0" colspan="3">
+           <widget class="QGroupBox" name="groupBox">
+            <property name="title">
+             <string>Classification Validation</string>
             </property>
-           </spacer>
+            <widget class="QLabel" name="label_6">
+             <property name="geometry">
+              <rect>
+               <x>10</x>
+               <y>20</y>
+               <width>144</width>
+               <height>28</height>
+              </rect>
+             </property>
+             <property name="text">
+              <string>Manually Labeled Image</string>
+             </property>
+            </widget>
+            <widget class="QLabel" name="label_7">
+             <property name="geometry">
+              <rect>
+               <x>10</x>
+               <y>50</y>
+               <width>173</width>
+               <height>28</height>
+              </rect>
+             </property>
+             <property name="text">
+              <string>Automatically Labeled Image</string>
+             </property>
+            </widget>
+            <widget class="QLabel" name="label_8">
+             <property name="geometry">
+              <rect>
+               <x>10</x>
+               <y>80</y>
+               <width>84</width>
+               <height>28</height>
+              </rect>
+             </property>
+             <property name="text">
+              <string>True Positives</string>
+             </property>
+            </widget>
+            <widget class="QLabel" name="label_9">
+             <property name="geometry">
+              <rect>
+               <x>10</x>
+               <y>110</y>
+               <width>91</width>
+               <height>28</height>
+              </rect>
+             </property>
+             <property name="text">
+              <string>True Negatives</string>
+             </property>
+            </widget>
+            <widget class="QLabel" name="true_neg_label">
+             <property name="geometry">
+              <rect>
+               <x>190</x>
+               <y>110</y>
+               <width>400</width>
+               <height>28</height>
+              </rect>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+            </widget>
+            <widget class="QLabel" name="label_10">
+             <property name="geometry">
+              <rect>
+               <x>10</x>
+               <y>140</y>
+               <width>85</width>
+               <height>28</height>
+              </rect>
+             </property>
+             <property name="text">
+              <string>False Positives</string>
+             </property>
+            </widget>
+            <widget class="QLabel" name="false_pos_label">
+             <property name="geometry">
+              <rect>
+               <x>190</x>
+               <y>140</y>
+               <width>400</width>
+               <height>28</height>
+              </rect>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+            </widget>
+            <widget class="QLabel" name="label_11">
+             <property name="geometry">
+              <rect>
+               <x>10</x>
+               <y>170</y>
+               <width>92</width>
+               <height>28</height>
+              </rect>
+             </property>
+             <property name="text">
+              <string>False Negatives</string>
+             </property>
+            </widget>
+            <widget class="QLabel" name="false_neg_label">
+             <property name="geometry">
+              <rect>
+               <x>190</x>
+               <y>170</y>
+               <width>400</width>
+               <height>28</height>
+              </rect>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+            </widget>
+            <widget class="QLabel" name="label_12">
+             <property name="geometry">
+              <rect>
+               <x>10</x>
+               <y>200</y>
+               <width>53</width>
+               <height>28</height>
+              </rect>
+             </property>
+             <property name="text">
+              <string>Precision</string>
+             </property>
+            </widget>
+            <widget class="QLabel" name="precision_label">
+             <property name="geometry">
+              <rect>
+               <x>190</x>
+               <y>200</y>
+               <width>400</width>
+               <height>28</height>
+              </rect>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+            </widget>
+            <widget class="QLabel" name="label_13">
+             <property name="geometry">
+              <rect>
+               <x>10</x>
+               <y>230</y>
+               <width>34</width>
+               <height>28</height>
+              </rect>
+             </property>
+             <property name="text">
+              <string>Recall</string>
+             </property>
+            </widget>
+            <widget class="QLabel" name="recall_label">
+             <property name="geometry">
+              <rect>
+               <x>190</x>
+               <y>230</y>
+               <width>400</width>
+               <height>28</height>
+              </rect>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+            </widget>
+            <widget class="QLabel" name="f1_score">
+             <property name="geometry">
+              <rect>
+               <x>10</x>
+               <y>260</y>
+               <width>54</width>
+               <height>28</height>
+              </rect>
+             </property>
+             <property name="text">
+              <string>F1 Score</string>
+             </property>
+            </widget>
+            <widget class="QLabel" name="f1_score_label">
+             <property name="geometry">
+              <rect>
+               <x>190</x>
+               <y>212</y>
+               <width>16</width>
+               <height>17</height>
+              </rect>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+            </widget>
+            <widget class="QLabel" name="true_pos_label">
+             <property name="enabled">
+              <bool>true</bool>
+             </property>
+             <property name="geometry">
+              <rect>
+               <x>190</x>
+               <y>80</y>
+               <width>400</width>
+               <height>28</height>
+              </rect>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+            </widget>
+            <widget class="QWidget" name="">
+             <property name="geometry">
+              <rect>
+               <x>190</x>
+               <y>20</y>
+               <width>401</width>
+               <height>21</height>
+              </rect>
+             </property>
+             <layout class="QGridLayout" name="gridLayout_11"/>
+            </widget>
+            <widget class="QWidget" name="">
+             <property name="geometry">
+              <rect>
+               <x>190</x>
+               <y>50</y>
+               <width>401</width>
+               <height>21</height>
+              </rect>
+             </property>
+             <layout class="QGridLayout" name="gridLayout_12"/>
+            </widget>
+           </widget>
           </item>
          </layout>
         </widget>
        </widget>
-       <widget class="QWidget" name="tab_5">
-        <attribute name="title">
-         <string>Flourescence Overlay</string>
-        </attribute>
-        <widget class="QWidget" name="gridLayoutWidget_3">
-         <property name="geometry">
-          <rect>
-           <x>20</x>
-           <y>30</y>
-           <width>371</width>
-           <height>61</height>
-          </rect>
-         </property>
-         <layout class="QGridLayout" name="gridLayout_intensity_image"/>
-        </widget>
-        <widget class="QLabel" name="label_22">
-         <property name="geometry">
-          <rect>
-           <x>20</x>
-           <y>10</y>
-           <width>391</width>
-           <height>16</height>
-          </rect>
-         </property>
-         <property name="text">
-          <string>Select single-channeled intensity overlay image</string>
-         </property>
-        </widget>
-        <widget class="QPushButton" name="save_flr_button">
-         <property name="geometry">
-          <rect>
-           <x>640</x>
-           <y>60</y>
-           <width>93</width>
-           <height>28</height>
-          </rect>
-         </property>
-         <property name="text">
-          <string>Save Flr Data</string>
-         </property>
-        </widget>
-        <widget class="QLabel" name="label_23">
-         <property name="geometry">
-          <rect>
-           <x>480</x>
-           <y>40</y>
-           <width>421</width>
-           <height>21</height>
-          </rect>
-         </property>
-         <property name="text">
-          <string>Save button that outputs ROI numbers and intensity of overlayed image</string>
-         </property>
-        </widget>
-        <widget class="QLabel" name="label_24">
-         <property name="geometry">
-          <rect>
-           <x>30</x>
-           <y>100</y>
-           <width>391</width>
-           <height>16</height>
-          </rect>
-         </property>
-         <property name="text">
-          <string>Select classifier window containing ROI's </string>
-         </property>
-        </widget>
-        <widget class="QWidget" name="gridLayoutWidget_4">
-         <property name="geometry">
-          <rect>
-           <x>20</x>
-           <y>120</y>
-           <width>371</width>
-           <height>71</height>
-          </rect>
-         </property>
-         <layout class="QGridLayout" name="gridLayout_labeled_image"/>
-        </widget>
-       </widget>
-       <widget class="QWidget" name="tab_4">
+       <widget class="QWidget" name="input_output_tab">
         <attribute name="title">
          <string>Input/Output</string>
         </attribute>
         <widget class="QWidget" name="gridLayoutWidget_7">
          <property name="geometry">
           <rect>
-           <x>9</x>
-           <y>9</y>
-           <width>461</width>
+           <x>10</x>
+           <y>10</y>
+           <width>711</width>
            <height>181</height>
           </rect>
          </property>
@@ -785,12 +805,9 @@
           <item row="1" column="1">
            <widget class="QLabel" name="label_2">
             <property name="text">
-             <string>Mouse Name:</string>
+             <string>Identifying Name:</string>
             </property>
            </widget>
-          </item>
-          <item row="1" column="2">
-           <widget class="QLineEdit" name="mousename"/>
           </item>
           <item row="2" column="0">
            <widget class="QPushButton" name="load_binary_button">
@@ -799,11 +816,13 @@
             </property>
            </widget>
           </item>
+          <item row="1" column="2">
+           <widget class="QLineEdit" name="identifier_input"/>
+          </item>
          </layout>
         </widget>
        </widget>
-<<<<<<< HEAD
-       <widget class="QWidget" name="tab_5">
+       <widget class="QWidget" name="flr_tab">
         <property name="enabled">
          <bool>true</bool>
         </property>
@@ -819,7 +838,7 @@
            <height>51</height>
           </rect>
          </property>
-         <layout class="QGridLayout" name="gridLayout_test"/>
+         <layout class="QGridLayout" name="gridLayout_import_flr"/>
         </widget>
         <widget class="QLabel" name="label_22">
          <property name="geometry">
@@ -872,7 +891,7 @@
          </property>
         </widget>
        </widget>
-       <widget class="QWidget" name="dapiTab">
+       <widget class="QWidget" name="dapi_tab">
         <attribute name="title">
          <string>DAPI</string>
         </attribute>
@@ -898,7 +917,7 @@
            <height>51</height>
           </rect>
          </property>
-         <layout class="QGridLayout" name="gridLayout_Import_DAPI"/>
+         <layout class="QGridLayout" name="gridLayout_import_DAPI"/>
         </widget>
         <widget class="QWidget" name="gridLayoutWidget_12">
          <property name="geometry">
@@ -909,7 +928,7 @@
            <height>511</height>
           </rect>
          </property>
-         <layout class="QGridLayout" name="gridLayout_DAPI_Image"/>
+         <layout class="QGridLayout" name="gridLayout_DAPI_img"/>
         </widget>
         <widget class="QPushButton" name="run_erosion_button">
          <property name="geometry">
@@ -954,8 +973,6 @@
          </property>
         </widget>
        </widget>
-=======
->>>>>>> 29a18175916612e70ad6df8eac39285fb23398a3
       </widget>
      </item>
     </layout>
@@ -979,7 +996,7 @@
   <tabstop>resize_factor_SpinBox</tabstop>
   <tabstop>save_fiber_button</tabstop>
   <tabstop>mysql_export_button</tabstop>
-  <tabstop>mousename</tabstop>
+  <tabstop>identifier_input</tabstop>
   <tabstop>load_binary_button</tabstop>
   <tabstop>save_flr_button</tabstop>
  </tabstops>

@@ -202,8 +202,8 @@ class Myoquant():
         self.threshold2_slider.setRange(0, 1)
         self.threshold2_slider.setValue(.1)
         self.threshold2_slider.valueChanged.connect(self.threshold_slider_changed)
-        gui.gridLayout_9.addWidget(self.threshold1_slider)
-        gui.gridLayout_16.addWidget(self.threshold2_slider)
+        gui.gridLayout_threshold_one.addWidget(self.threshold1_slider)
+        gui.gridLayout_threshold_two.addWidget(self.threshold2_slider)
         gui.fill_boundaries_button.pressed.connect(self.fill_boundaries_button)
         gui.SVM_button.pressed.connect(self.run_SVM_classification_on_labeled_image)
         gui.SVM_saved_button.pressed.connect(self.run_SVM_classification_on_saved_training_data)
@@ -220,11 +220,11 @@ class Myoquant():
 
         self.flr_window_selector = WindowSelector()
         self.flr_window_selector.valueChanged.connect(self.add_flr_img)
-        gui.gridLayout_test.addWidget(self.flr_window_selector)
+        gui.gridLayout_import_flr.addWidget(self.flr_window_selector)
 
         self.dapi_window_selector = WindowSelector()
         self.dapi_window_selector.valueChanged.connect(self.add_dapi_img)
-        gui.gridLayout_Import_DAPI.addWidget(self.dapi_window_selector)
+        gui.gridLayout_import_DAPI.addWidget(self.dapi_window_selector)
 
         self.intensity_img_selector= WindowSelector()
         self.intensity_img_selector.valueChanged.connect(self.select_intensity_image)
@@ -299,7 +299,7 @@ class Myoquant():
             self.threshold_slider_changed()
 
             fname = self.original_window_selector.value().filename
-            self.algorithm_gui.mousename.setText(os.path.splitext(os.path.basename(fname))[0])
+            self.algorithm_gui.identifier_input.setText(os.path.splitext(os.path.basename(fname))[0])
 
     def threshold_slider_changed(self):
         if self.original_window_selector.window is None:
@@ -466,8 +466,8 @@ class Myoquant():
         X[:, 0] /= scaleFactor**2  # area
         X[:, 4] *= scaleFactor  # minor axis
         # ['Area', 'Eccentricity', 'Convexity', 'Circularity', 'ROI #', 'Minor axis length']
-        mousename = self.algorithm_gui.mousename.text()
-        msg = mysql_interface.add_fibers(mousename, X)
+        identifier_input = self.algorithm_gui.identifier_input.text()
+        msg = mysql_interface.add_fibers(identifier_input, X)
         g.alert(msg)
 
     def closeEvent(self, event):
@@ -513,11 +513,11 @@ class Myoquant():
         print('Adding image for DAPI analysis...')
         #Add/Remove images as necessary to display the appropriate images in the window
         if self.classifier_window is not None:
-            self.algorithm_gui.gridLayout_DAPI_Image.removeWidget(self.classifier_window)
+            self.algorithm_gui.gridLayout_DAPI_img.removeWidget(self.classifier_window)
             self.classifier_window.setParent(None)
             self.classifier_window.close()
         self.classifier_window = Classifier_Window(self.dapi_window_selector.window.image)
-        self.algorithm_gui.gridLayout_DAPI_Image.addWidget(self.classifier_window)
+        self.algorithm_gui.gridLayout_DAPI_img.addWidget(self.classifier_window)
         #Update the coloring of the image to contain green and red
         self.classifier_window.set_roi_states(self.roiStates)
         self.algorithm_gui.run_erosion_button.pressed.connect(self.classifier_window.run_erosion)
