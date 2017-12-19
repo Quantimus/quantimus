@@ -42,19 +42,22 @@ def calc_min_feret_diameter(props):
 
 
 class Classifier_Window(Window):
-    RED = np.array([True, False, False])
-    GREEN = np.array([False, True, False])
     WHITE = np.array([True, True, True])
     BLACK = np.array([False, False, False])
+    RED = np.array([True, False, False])
+    GREEN = np.array([False, True, False])
+    BLUE = np.array([False, False, True])
+    PURPLE = np.array([True, False, True])
     YELLOW = np.array([True, True, False])
-    ORANGE = np.array([True, True, False])
 
     def __init__(self, tif, name='flika', filename='', commands=[], metadata=dict()):
         tif = tif.astype(np.bool)
         super().__init__(tif, name, filename, commands, metadata)
 
         self.labeled_img = label(tif, connectivity=2)
+        self.dapi_labeled_img = label(tif, connectivity=2)
         self.nROIs = np.max(self.labeled_img)
+        self.eroded_labeled_img = label(tif, connectivity=2)
         self.roi_states = np.zeros(np.max(self.labeled_img), dtype=np.uint8)
         self.colored_img = np.repeat(self.image[:, :, np.newaxis], 3, 2)
         self.imageview.setImage(self.colored_img)
@@ -202,25 +205,30 @@ class Classifier_Window(Window):
         self.roi_states = roi_states
         self.colored_img = np.repeat(self.image[:, :, np.newaxis], 3, 2)
 
-        for i in np.nonzero(self.roi_states == 1)[0]:
+        for i in np.nonzero(roi_states == 1)[0]:
             x, y = self.props[i].coords.T
             self.colored_img[x, y] = Classifier_Window.GREEN
-        for i in np.nonzero(self.roi_states == 2)[0]:
+        for i in np.nonzero(roi_states == 2)[0]:
             x, y = self.props[i].coords.T
             self.colored_img[x, y] = Classifier_Window.RED
         self.update_image(self.colored_img)
 
-    # This is a test function. This has no bearing on the final product
     def run_erosion(self):
-        for i in np.nonzero(self.roi_states == 1)[0]:
+        # Reset potentially old values=
+        self.eroded_roi_states = None
+        g.myoquant.overlapped_rois = None
 
+        #Set all values in eroded_labeled_img to 0
+        #The appropriate coordinates will be marked as 1 later
+        self.eroded_labeled_img[:len(self.eroded_labeled_img - 1)] = 0
+        for i in np.nonzero(self.roi_states == 1)[0]:
             # Reset the ROIs to green
             x, y = self.props[i].coords.T
             self.colored_img[x, y] = Classifier_Window.GREEN
 
             individualProp = self.props[i]
 
-            targetSize = g.myoquant.algorithm_gui.erosion_percentage_SpinBox.value() * .01
+            targetSize = (100 - g.myoquant.algorithm_gui.erosion_percentage_SpinBox.value()) * .01
             targetArea = individualProp.area * targetSize
 
             if (targetArea > 10):
@@ -238,7 +246,7 @@ class Classifier_Window(Window):
                     else:
                         break
 
-                # Calculate the difference between the original bbox and the new bbox
+                #Calculate the difference between the original bbox and the new bbox
                 originalX, originalY = self.props[i].centroid
                 newX, newY = individualProp.centroid
                 differenceX = newX - originalX
@@ -246,20 +254,14 @@ class Classifier_Window(Window):
 
                 x, y = individualProp.coords.T
 
-                # Updated each coordinate with an adjusted value, accounting for the difference
+                #Updated each coordinate with an adjusted value, accounting for the difference
                 for i in range(len(x)):
                     x[i] = x[i] + (-1 * differenceX)
-
                 for i in range(len(y)):
                     y[i] = y[i] + (-1 * differenceY)
+                self.eroded_labeled_img[x, y] = 1
 
-                self.colored_img[x, y] = Classifier_Window.ORANGE
-                self.update_image(self.colored_img)
-
-
-#self = Classifier_Window(g.currentWindow.image) --- g.win._____
-
-
-
-
-
+        eroded_label = label(self.eroded_labeled_img, connectivity=2)
+        g.myoquant.eroded_roi_states = measure.regionprops(eroded_label)
+        g.myoquant.eroded_labeled_img = self.eroded_labeled_img
+        g.myoquant.paintColoredImage()

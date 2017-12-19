@@ -12,7 +12,9 @@ from skimage import measure
 from skimage.measure import label
 from qtpy import uic
 from skimage.morphology import binary_dilation
+from itertools import chain
 import json, codecs
+import math
 
 
 import flika
@@ -184,8 +186,13 @@ class Myoquant():
         self.classifier_window = None
         self.lines_win = None
         self.intensity_img = None
+        self.dapi_img = None
+        self.dapi_labeled_img = None
         self.labeled_img = None
-
+        self.eroded_labeled_img = None
+        self.eroded_roi_states = None
+        self.dapi_rois = None
+        self.overlapped_rois = None
 
 
         gui = uic.loadUi(os.path.join(os.path.dirname(__file__), 'myoquant.ui'))
@@ -208,8 +215,6 @@ class Myoquant():
         gui.SVM_button.pressed.connect(self.run_SVM_classification_on_labeled_image)
         gui.SVM_saved_button.pressed.connect(self.run_SVM_classification_on_saved_training_data)
         gui.manual_filter_button.pressed.connect(self.hard_set_update)
-        #gui.save_flr_button.pressed.connect(self.save_fiber_data_flr)
-        gui.save_flr_button.pressed.connect(self.save_flr)
 
         self.validation_manual_selector = WindowSelector()
         self.validation_manual_selector.valueChanged.connect(self.validate)
@@ -217,14 +222,6 @@ class Myoquant():
         self.validation_automatic_selector = WindowSelector()
         self.validation_automatic_selector.valueChanged.connect(self.validate)
         gui.gridLayout_12.addWidget(self.validation_automatic_selector)
-
-        self.flr_window_selector = WindowSelector()
-        self.flr_window_selector.valueChanged.connect(self.add_flr_img)
-        gui.gridLayout_import_flr.addWidget(self.flr_window_selector)
-
-        self.dapi_window_selector = WindowSelector()
-        self.dapi_window_selector.valueChanged.connect(self.add_dapi_img)
-        gui.gridLayout_import_DAPI.addWidget(self.dapi_window_selector)
 
         self.intensity_img_selector= WindowSelector()
         self.intensity_img_selector.valueChanged.connect(self.select_intensity_image)
@@ -234,8 +231,15 @@ class Myoquant():
         self.labeled_img_selector.valueChanged.connect(self.select_labeled_image)
         gui.gridLayout_labeled_image.addWidget(self.labeled_img_selector)
 
-        gui.save_fiber_button.pressed.connect(self.save_fiber_data)
-        gui.mysql_export_button.pressed.connect(self.mysql_export_fiber_data)
+        self.dapi_img_selector = WindowSelector()
+        self.dapi_img_selector.valueChanged.connect(self.select_dapi_image)
+        gui.gridLayout_import_DAPI.addWidget(self.dapi_img_selector)
+
+        self.labeled_dapi_img_selector = WindowSelector()
+        self.labeled_dapi_img_selector.valueChanged.connect(self.select_dapi_labeled_image)
+        gui.gridLayout_contains_DAPI.addWidget(self.labeled_dapi_img_selector)
+
+        gui.run_DAPI_button.pressed.connect(self.calculate_dapi)
         gui.load_binary_button.pressed.connect(self.load_binary_image)
 
         gui.closeEvent = self.closeEvent
@@ -297,9 +301,7 @@ class Myoquant():
             self.threshold1_slider.setRange(np.min(original), np.max(original))
             self.threshold2_slider.setRange(np.min(original), np.max(original))
             self.threshold_slider_changed()
-
             fname = self.original_window_selector.value().filename
-            self.algorithm_gui.identifier_input.setText(os.path.splitext(os.path.basename(fname))[0])
 
     def threshold_slider_changed(self):
         if self.original_window_selector.window is None:
@@ -371,7 +373,7 @@ class Myoquant():
         roi_states = np.zeros_like(y)
         roi_states[y == 1] = 1
         roi_states[y == 0] = 2
-        result_win = Classifier_Window(self.classifier_window.image)
+        result_win = Classifier_Window(self.classifier_window.image, 'Trained Image')
         X = self.classifier_window.features_array
 
         ######################################################################################
@@ -384,27 +386,26 @@ class Myoquant():
 
         self.roiStates = roi_states
         result_win.set_roi_states(roi_states)
-        self.algorithm_gui.model_params_label.setText('')
 
-    def save_fiber_data(self):
-        scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
-        resizeFactor = g.myoquant.algorithm_gui.resize_factor_SpinBox.value()
-        if not isinstance(g.win, Classifier_Window):
-            g.alert('Make sure the window containing the data you are trying to export is selected (highlighted in green).')
-            return
-        X = g.win.get_extended_features_array()
-        X = X[g.win.roi_states == 1]
-        X[:, 1] /= (scaleFactor**2 * resizeFactor**2) # area
-        X[:, 2] *= scaleFactor / resizeFactor  # Minferet
-        fileSaveAsName = save_file_gui('Save file as...', filetypes='.xlsx')
-        workbook = xlsxwriter.Workbook(fileSaveAsName)
-        worksheet = workbook.add_worksheet()
-        header = ['ROI #','Area', 'Minferet','MFI']
-        # header = ['Area', 'Eccentricity', 'Convexity', 'Circularity', 'ROI #', 'Minferet','MFI']
-        worksheet.write_row(0, 0, header)
-        for row_idx, row_data in enumerate(X):
-            worksheet.write_row(row_idx + 1, 0, row_data)
-        workbook.close()
+    # def save_fiber_data(self):
+    #     scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
+    #     resizeFactor = g.myoquant.algorithm_gui.resize_factor_SpinBox.value()
+    #     if not isinstance(g.win, Classifier_Window):
+    #         g.alert('Make sure the window containing the data you are trying to export is selected (highlighted in green).')
+    #         return
+    #     X = g.win.get_extended_features_array()
+    #     X = X[g.win.roi_states == 1]
+    #     X[:, 1] /= (scaleFactor**2 * resizeFactor**2) # area
+    #     X[:, 2] *= scaleFactor / resizeFactor  # Minferet
+    #     fileSaveAsName = save_file_gui('Save file as...', filetypes='.xlsx')
+    #     workbook = xlsxwriter.Workbook(fileSaveAsName)
+    #     worksheet = workbook.add_worksheet()
+    #     header = ['ROI #','Area', 'Minferet','MFI']
+    #     # header = ['Area', 'Eccentricity', 'Convexity', 'Circularity', 'ROI #', 'Minferet','MFI']
+    #     worksheet.write_row(0, 0, header)
+    #     for row_idx, row_data in enumerate(X):
+    #         worksheet.write_row(row_idx + 1, 0, row_data)
+    #     workbook.close()
 
     # def master_save(self):
     #     scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
@@ -436,39 +437,74 @@ class Myoquant():
     #         worksheet.write_row(row_idx + 1, 0, row_data)
     #     workbook.close()
 
-    def save_flr(self):
-        if self.intensity_img is None:
-            g.alert('Make sure an intensity image is selected')
-        if self.labeled_img is None:
-            g.alert('Make sure a classified, labeled image is selected')
-        Y = measure.regionprops(self.labeled_img, self.intensity_img)
-        rois = np.max(self.labeled_img)
-        roi_num = np.arange(rois)
-        intensity = np.array([p.mean_intensity for p in Y])
-        X = np.stack((roi_num,intensity),1)
-        X = X[self.roiStates == 1]
-        fileSaveAsName = save_file_gui('Save file as...', filetypes='.xlsx')
-        workbook = xlsxwriter.Workbook(fileSaveAsName)
-        worksheet = workbook.add_worksheet()
-        header = ['ROI #','Overlay Intensity']
-        worksheet.write_row(0, 0, header)
-        for row_idx, row_data in enumerate(X):
-            worksheet.write_row(row_idx + 1, 0, row_data)
-        workbook.close()
+    # def save_data(self):
+    #     if self.dapi_img is None:
+    #         g.alert('Make sure a DAPI image is selected')
+    #     if self.dapi_labeled_img is None:
+    #         g.alert('Make sure a classified, DAPI image is selected')
+    #
+    # def save_flr(self):
+    #     if self.intensity_img is None:
+    #         g.alert('Make sure an intensity image is selected')
+    #     if self.labeled_img is None:
+    #         g.alert('Make sure a classified, labeled image is selected')
+    #     Y = measure.regionprops(self.labeled_img, self.intensity_img)
+    #     rois = np.max(self.labeled_img)
+    #     roi_num = np.arange(rois)
+    #     intensity = np.array([p.mean_intensity for p in Y])
+    #     X = np.stack((roi_num,intensity),1)
+    #     X = X[self.roiStates == 1]
+    #     fileSaveAsName = save_file_gui('Save file as...', filetypes='.xlsx')
+    #     workbook = xlsxwriter.Workbook(fileSaveAsName)
+    #     worksheet = workbook.add_worksheet()
+    #     header = ['ROI #','Overlay Intensity']
+    #     worksheet.write_row(0, 0, header)
+    #     for row_idx, row_data in enumerate(X):
+    #         worksheet.write_row(row_idx + 1, 0, row_data)
+    #     workbook.close()
 
-    def mysql_export_fiber_data(self):
-        scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
-        if not isinstance(g.win, Classifier_Window):
-            g.alert('Make sure the window containing the data you are trying to export is selected (highlighted in green).')
-            return
-        X = g.win.get_extended_features_array()
-        X = X[g.win.roi_states == 1]
-        X[:, 0] /= scaleFactor**2  # area
-        X[:, 4] *= scaleFactor  # minor axis
-        # ['Area', 'Eccentricity', 'Convexity', 'Circularity', 'ROI #', 'Minor axis length']
-        identifier_input = self.algorithm_gui.identifier_input.text()
-        msg = mysql_interface.add_fibers(identifier_input, X)
-        g.alert(msg)
+    def calculate_dapi(self):
+        # Reset potentially old values=
+        self.overlapped_rois = []
+
+        if self.dapi_img is None:
+            g.alert('Make sure a DAPI image is selected')
+        elif self.dapi_labeled_img is None:
+            g.alert('Make sure a classified, DAPI image is selected')
+        elif self.eroded_roi_states is None:
+            g.alert('Make sure to run the Fiber Erosion before calculating DAPI Overlap')
+        else:
+            #Turn each image into lists
+            erodedList = list(chain.from_iterable(zip(*self.eroded_labeled_img)))
+            dapiList = list(chain.from_iterable(zip(*self.dapi_labeled_img)))
+
+            overlappedCoords = []
+            imageWidth = len(list(self.dapi_labeled_img))
+            count = 0
+
+            # loop to check if there is overlap between DAPI and the eroded rois
+            while count < len(erodedList):
+                if(erodedList[count] > 0 and dapiList[count] > 0):
+                    overlapX = math.floor(count / imageWidth) - 1
+                    overlapY = count % imageWidth
+                    newList = [overlapX, overlapY]
+                    overlappedCoords.append(newList)
+                count = count + 1
+
+            previousCentroid = 0
+
+            for coord in overlappedCoords:
+                roi_num = self.dapi_img.labeled_img[coord[1], coord[0]] - 1
+                prop = self.dapi_img.props[roi_num]
+
+                #Check that the last processed ROI's centroid is not the exact same as the current ROI's centroid
+                #This is a method of checking uniqueness that doesn't require the use of nested loops
+                centroid = prop.centroid
+                if centroid != previousCentroid:
+                    previousCentroid = centroid
+                    self.overlapped_rois.append(prop)
+
+            self.paintColoredImage()
 
     def closeEvent(self, event):
         print('Closing myoquant gui')
@@ -478,18 +514,16 @@ class Myoquant():
 
     def hard_set_update(self):
         print('Manually filtering...')
-        result_win = Classifier_Window(self.classifier_window.image)
-        X = g.win.get_extended_features_array()
-        max_area = g.myoquant.algorithm_gui.max_area_SpinBox.value()
-        min_area = g.myoquant.algorithm_gui.min_area_SpinBox.value()
+        X = g.win.get_features_array()
         roi_states = self.roiStates
 
-        # Area
-        roi_states[np.logical_or(X[:, 0] >max_area, X[:,0] < min_area)] = 2
+        result_win = Classifier_Window(g.win.image, 'Filtered Trained Image')
+        max_area = g.myoquant.algorithm_gui.max_area_SpinBox.value()
+        min_area = g.myoquant.algorithm_gui.min_area_SpinBox.value()
 
-        self.roiStates = roi_states
+        # Area
+        roi_states[np.logical_or(X[:, 0]> max_area, X[:,0]< min_area)] = 2
         result_win.set_roi_states(roi_states)
-        #self.algorithm_gui.model_params_label.setText('')
 
         # Eccentricity
         # roi_states[X[:, 1] < 15] = 2
@@ -497,30 +531,6 @@ class Myoquant():
         # roi_states[X[:, 2] < 15] = 2
         # Circularity
         # roi_states[X[:, 3] < 15] = 2
-
-    def add_flr_img(self):
-        print('Adding image for flourescence analysis...')
-        if self.classifier_window is not None:
-            self.algorithm_gui.gridLayout_flr_img.removeWidget(self.classifier_window)
-            self.classifier_window.setParent(None)
-            self.classifier_window.close()
-        self.classifier_window = Classifier_Window(self.flr_window_selector.window.image)
-        self.algorithm_gui.gridLayout_flr_img.addWidget(self.classifier_window)
-        #self.algorithm_gui.analyze_tab_widget.setCurrentIndex(2)
-        Classifier_Window(g.win.image,'Flourescence Analysis')
-
-    def add_dapi_img(self):
-        print('Adding image for DAPI analysis...')
-        #Add/Remove images as necessary to display the appropriate images in the window
-        if self.classifier_window is not None:
-            self.algorithm_gui.gridLayout_DAPI_img.removeWidget(self.classifier_window)
-            self.classifier_window.setParent(None)
-            self.classifier_window.close()
-        self.classifier_window = Classifier_Window(self.dapi_window_selector.window.image)
-        self.algorithm_gui.gridLayout_DAPI_img.addWidget(self.classifier_window)
-        #Update the coloring of the image to contain green and red
-        self.classifier_window.set_roi_states(self.roiStates)
-        self.algorithm_gui.run_erosion_button.pressed.connect(self.classifier_window.run_erosion)
 
     def select_intensity_image(self):
         print('Intensity image selected.')
@@ -530,6 +540,46 @@ class Myoquant():
         print('Labeled image selected.')
         self.labeled_img = self.labeled_img_selector.window.labeled_img
         self.roiStates = g.win.roi_states
+
+    def select_dapi_image(self):
+        print('DAPI image selected.')
+        #Reset potentially old values
+        self.dapi_rois = None
+        self.eroded_roi_states = None
+        self.overlapped_rois = None
+        #Select the image
+        self.dapi_img = Classifier_Window(self.dapi_img_selector.window.image, 'CNF Image')
+        self.dapi_img.set_roi_states(self.roiStates)
+        self.algorithm_gui.run_erosion_button.pressed.connect(self.dapi_img.run_erosion)
+        self.paintColoredImage()
+
+    def select_dapi_labeled_image(self):
+        print('DAPI labeled image selected.')
+        # Reset potentially old values
+        self.dapi_rois = None
+        self.eroded_roi_states = None
+        self.overlapped_rois = None
+        #Select the image
+        self.dapi_labeled_img = self.labeled_dapi_img_selector.window.image
+        self.dapi_rois = measure.regionprops(self.dapi_labeled_img)
+        self.paintColoredImage()
+
+    def paintColoredImage(self):
+        if self.dapi_img is not None:
+            self.dapi_img.set_roi_states(self.roiStates)
+            if self.overlapped_rois is not None:
+                for prop in self.overlapped_rois:
+                    x, y = prop.coords.T
+                    self.dapi_img.colored_img[x, y] = Classifier_Window.PURPLE
+            if self.eroded_roi_states is not None:
+                for prop in self.eroded_roi_states:
+                    x, y = prop.coords.T
+                    self.dapi_img.colored_img[x, y] = Classifier_Window.YELLOW
+            if self.dapi_rois is not None:
+                for prop in self.dapi_rois:
+                    x, y = prop.coords.T
+                    self.dapi_img.colored_img[x, y] = Classifier_Window.BLUE
+            self.dapi_img.update_image(self.dapi_img.colored_img)
 
 myoquant = Myoquant()
 g.myoquant = myoquant
