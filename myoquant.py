@@ -413,7 +413,7 @@ class Myoquant():
                     if centroid != previousCentroid:
                         previousCentroid = centroid
                         self.overlapped_rois[roi_num] = prop
-            self.paintColoredImage()
+            self.paintDapiColoredImage()
 
     def closeEvent(self, event):
         print('Closing myoquant gui')
@@ -451,8 +451,9 @@ class Myoquant():
 
     def select_labeled_image(self):
         print('Labeled image selected.')
-        self.labeled_img = self.labeled_img_selector.window.labeled_img
-        self.roiStates = g.win.roi_states
+        self.labeled_img = Classifier_Window(self.labeled_img_selector.window.labeled_img, 'Flourescence Image')
+        self.labeled_img.set_roi_states(self.roiStates)
+        self.paintFlrColoredImage()
 
     def select_dapi_image(self):
         print('DAPI image selected.')
@@ -464,7 +465,7 @@ class Myoquant():
         self.dapi_img = Classifier_Window(self.dapi_img_selector.window.image, 'CNF Image')
         self.dapi_img.set_roi_states(self.roiStates)
         self.algorithm_gui.run_erosion_button.pressed.connect(self.dapi_img.run_erosion)
-        self.paintColoredImage()
+        self.paintDapiColoredImage()
 
     def select_dapi_labeled_image(self):
         print('DAPI labeled image selected.')
@@ -475,9 +476,9 @@ class Myoquant():
         #Select the image
         self.dapi_labeled_img = self.labeled_dapi_img_selector.window.image
         self.dapi_rois = measure.regionprops(self.dapi_labeled_img)
-        self.paintColoredImage()
+        self.paintDapiColoredImage()
 
-    def paintColoredImage(self):
+    def paintDapiColoredImage(self):
         if self.dapi_img is not None:
             self.dapi_img.set_roi_states(self.roiStates)
             if self.overlapped_rois is not None:
@@ -494,6 +495,10 @@ class Myoquant():
                     x, y = prop.coords.T
                     self.dapi_img.colored_img[x, y] = Classifier_Window.BLUE
             self.dapi_img.update_image(self.dapi_img.colored_img)
+
+    def paintFlrColoredImage(self):
+        if self.labeled_img is not None:
+            self.labeled_img.set_roi_states(self.roiStates)
 
     def save_data(self):
         scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()

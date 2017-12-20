@@ -235,4 +235,4 @@ class Classifier_Window(Window):
         eroded_label = label(self.eroded_labeled_img, connectivity=2)
         g.myoquant.eroded_roi_states = measure.regionprops(eroded_label)
         g.myoquant.eroded_labeled_img = self.eroded_labeled_img
-        g.myoquant.paintColoredImage()
+        g.myoquant.paintDapiColoredImage()
