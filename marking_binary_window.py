@@ -13,34 +13,6 @@ def rotation_matrix(theta):
     return np.array([[np.cos(theta), -np.sin(theta)],
                      [np.sin(theta), np.cos(theta)]])
 
-def calc_min_feret_diameter(props):
-    '''  calculates all the minimum feret diameters for regions in props '''
-    # props = g.win.props
-    min_feret_diameters = []
-    thetas = np.arange(0, np.pi / 2, .01)
-    Rs = [rotation_matrix(theta) for theta in thetas]
-    for roi in props:
-        if min(roi.convex_image.shape) == 1:
-            min_feret_diameters.append(1)
-        elif min(roi.convex_image.shape) == 2:
-            min_feret_diameters.append(2)
-        else:
-            identity_convex_hull = roi.convex_image
-            coordinates = np.vstack(find_contours(identity_convex_hull, 0.5, fully_connected = 'high'))
-            coordinates -= np.mean(coordinates, 0)
-            diams = []
-            #ws = []; hs = [];
-            for R in Rs:
-                newcoords = np.dot(coordinates, R.T)
-                w, h = np.max(newcoords, 0) - np.min(newcoords, 0)
-                #ws.append(w); hs.append(h)
-                diams.extend([w, h])
-            #p = pg.plot(thetas, ws, pen=pg.mkPen('r')); p.plot(thetas, hs, pen=pg.mkPen('g'))
-            min_feret_diameters.append(np.min(diams))
-    min_feret_diameters = np.array(min_feret_diameters)
-    return min_feret_diameters
-
-
 class Classifier_Window(Window):
     WHITE = np.array([True, True, True])
     BLACK = np.array([False, False, False])
@@ -141,14 +113,12 @@ class Classifier_Window(Window):
     def get_extended_features_array(self):
         if self.features_array is None:
             self.features_array = self.get_features_array()
-        #X = np.copy(self.features_array)
-        #minor_axis = np.array([p.minor_axis_length for p in self.props])
-        min_ferets = np.array([calc_min_feret_diameter(g.win.props)]).T
+
+        min_ferets = np.array([g.myoquant.calc_min_feret_diameters(g.win.props)]).T
         roi_num = np.arange(self.nROIs)
         area = self.features_array[:,0]
-        #X = np.concatenate((X, roi_num[:, np.newaxis], min_ferets), 1)
-        X = np.concatenate((roi_num[:, np.newaxis], area[:, np.newaxis], min_ferets), 1)
 
+        X = np.concatenate((roi_num[:, np.newaxis], area[:, np.newaxis], min_ferets), 1)
         if g.myoquant.intensity_img is not None and g.myoquant.labeled_img is not None:
             Y = measure.regionprops(g.myoquant.labeled_img, g.myoquant.intensity_img)
             mfi = np.array([p.mean_intensity for p in Y])
@@ -202,6 +172,7 @@ class Classifier_Window(Window):
     def set_roi_states(self, roi_states):
         if self.props is None:
             self.props = measure.regionprops(self.labeled_img)
+            g.myoquant.roiProps = self.props
         self.roi_states = roi_states
         self.colored_img = np.repeat(self.image[:, :, np.newaxis], 3, 2)
 

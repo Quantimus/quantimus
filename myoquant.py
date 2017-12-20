@@ -172,7 +172,6 @@ def get_new_I(I, thresh1=.20, thresh2=.30):
     #I_new = I + .2 * borders
     return I_new
 
-
 class Myoquant():
     """myoquant()
     Muscle Cell Analysis Software
@@ -193,6 +192,7 @@ class Myoquant():
         self.eroded_roi_states = None
         self.dapi_rois = None
         self.overlapped_rois = None
+        self.roiProps = None
 
 
         gui = uic.loadUi(os.path.join(os.path.dirname(__file__), 'myoquant.ui'))
@@ -241,6 +241,7 @@ class Myoquant():
 
         gui.run_DAPI_button.pressed.connect(self.calculate_dapi)
         gui.load_binary_button.pressed.connect(self.load_binary_image)
+        gui.save_button.pressed.connect(self.save_data)
 
         gui.closeEvent = self.closeEvent
 
@@ -387,6 +388,198 @@ class Myoquant():
         self.roiStates = roi_states
         result_win.set_roi_states(roi_states)
 
+    def calculate_dapi(self):
+        # Reset potentially old values=
+        self.overlapped_rois = [None] * len(self.roiStates)
+
+        if self.dapi_img is None:
+            g.alert('Make sure a DAPI image is selected')
+        elif self.dapi_labeled_img is None:
+            g.alert('Make sure a classified, DAPI image is selected')
+        elif self.eroded_roi_states is None:
+            g.alert('Make sure to run the Fiber Erosion before calculating DAPI Overlap')
+        else:
+            #Turn each image into lists
+            erodedList = list(chain.from_iterable(zip(*self.eroded_labeled_img)))
+            dapiList = list(chain.from_iterable(zip(*self.dapi_labeled_img)))
+
+            overlappedCoords = []
+            imageWidth = len(list(self.dapi_labeled_img))
+
+            count = 0
+            # loop to check if there is overlap between DAPI and the eroded rois
+            while count < len(erodedList):
+                #add an item to the overlapped_rois list
+                if(erodedList[count] > 0 and dapiList[count] > 0):
+                    overlapX = math.floor(count / imageWidth) - 1
+                    overlapY = count % imageWidth
+                    newList = [overlapX, overlapY]
+                    overlappedCoords.append(newList)
+                count = count + 1
+
+            previousCentroid = 0
+
+            for coord in overlappedCoords:
+                roi_num = self.dapi_img.labeled_img[coord[1], coord[0]] - 1
+                if self.roiStates[roi_num] == 1:
+                    prop = self.dapi_img.props[roi_num]
+                    #Check that the last processed ROI's centroid is not the exact same as the current ROI's centroid
+                    #This is a method of checking uniqueness that doesn't require the use of nested loops
+                    centroid = prop.centroid
+                    if centroid != previousCentroid:
+                        previousCentroid = centroid
+                        self.overlapped_rois[roi_num] = prop
+            self.paintColoredImage()
+
+    def closeEvent(self, event):
+        print('Closing myoquant gui')
+        if self.classifier_window is not None:
+            self.classifier_window.close()
+        event.accept() # let the window close
+
+    def hard_set_update(self):
+        print('Manually filtering...')
+        X = g.win.get_features_array()
+        roi_states = self.roiStates
+
+        result_win = Classifier_Window(g.win.image, 'Filtered Trained Image')
+        max_area = g.myoquant.algorithm_gui.max_area_SpinBox.value()
+        min_area = g.myoquant.algorithm_gui.min_area_SpinBox.value()
+
+        # Area
+        roi_states[np.logical_or(X[:, 0]> max_area, X[:,0]< min_area)] = 2
+        result_win.set_roi_states(roi_states)
+
+        # Eccentricity
+        # roi_states[X[:, 1] < 15] = 2
+        # Convexity
+        # roi_states[X[:, 2] < 15] = 2
+        # Circularity
+        # roi_states[X[:, 3] < 15] = 2
+
+    def select_intensity_image(self):
+        print('Intensity image selected.')
+        self.intensity_img = self.intensity_img_selector.window.image
+
+    def select_labeled_image(self):
+        print('Labeled image selected.')
+        self.labeled_img = self.labeled_img_selector.window.labeled_img
+        self.roiStates = g.win.roi_states
+
+    def select_dapi_image(self):
+        print('DAPI image selected.')
+        #Reset potentially old data
+        self.dapi_rois = None
+        self.eroded_roi_states = None
+        self.overlapped_rois = None
+        #Select the image
+        self.dapi_img = Classifier_Window(self.dapi_img_selector.window.image, 'CNF Image')
+        self.dapi_img.set_roi_states(self.roiStates)
+        self.algorithm_gui.run_erosion_button.pressed.connect(self.dapi_img.run_erosion)
+        self.paintColoredImage()
+
+    def select_dapi_labeled_image(self):
+        print('DAPI labeled image selected.')
+        # Reset potentially old data
+        self.dapi_rois = None
+        self.eroded_roi_states = None
+        self.overlapped_rois = None
+        #Select the image
+        self.dapi_labeled_img = self.labeled_dapi_img_selector.window.image
+        self.dapi_rois = measure.regionprops(self.dapi_labeled_img)
+        self.paintColoredImage()
+
+    def paintColoredImage(self):
+        if self.dapi_img is not None:
+            self.dapi_img.set_roi_states(self.roiStates)
+            if self.overlapped_rois is not None:
+                for prop in self.overlapped_rois:
+                    if prop is not None:
+                        x, y = prop.coords.T
+                        self.dapi_img.colored_img[x, y] = Classifier_Window.PURPLE
+            if self.eroded_roi_states is not None:
+                for prop in self.eroded_roi_states:
+                    x, y = prop.coords.T
+                    self.dapi_img.colored_img[x, y] = Classifier_Window.YELLOW
+            if self.dapi_rois is not None:
+                for prop in self.dapi_rois:
+                    x, y = prop.coords.T
+                    self.dapi_img.colored_img[x, y] = Classifier_Window.BLUE
+            self.dapi_img.update_image(self.dapi_img.colored_img)
+
+    def save_data(self):
+        scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
+        resizeFactor = g.myoquant.algorithm_gui.resize_factor_SpinBox.value()
+        minferetProps = self.calc_min_feret_diameters(self.roiProps)
+
+        # Set up the multi-dimensional array to store all of the data
+        dataArray = [['ROI #'], ['Area'], ['Minferet'], ['MFI'], ['CNF']]
+
+        count = 0
+        for prop in self.roiProps:
+            if self.roiStates[count] == 1:
+                # ROI Number
+                dataArray[0].append(count)
+
+                #Area
+                area = prop.area
+                area /= (scaleFactor**2 * resizeFactor**2)
+                dataArray[1].append(area)
+
+                # MinFeret
+                minferet = minferetProps[count] * (scaleFactor / resizeFactor)
+                dataArray[2].append(minferet)
+
+                #MFI
+
+
+                #CNF
+                if self.overlapped_rois is not None:
+                    if self.overlapped_rois[count] is not None:
+                        dataArray[4].append("1")
+                    else:
+                        dataArray[4].append("0")
+
+            count += 1
+
+        fileSaveAsName = save_file_gui('Save file as...', filetypes='*.xlsx')
+        print(fileSaveAsName)
+        workbook = xlsxwriter.Workbook(fileSaveAsName)
+        worksheet = workbook.add_worksheet()
+        worksheet.write_column('A1',dataArray[0])
+        worksheet.write_column('B1',dataArray[1])
+        worksheet.write_column('C1',dataArray[2])
+        worksheet.write_column('D1',dataArray[3])
+        worksheet.write_column('E1',dataArray[4])
+        workbook.close()
+
+    def calc_min_feret_diameters(self, props):
+        '''  calculates all the minimum feret diameters for regions in props '''
+        # props = g.win.props
+        min_feret_diameters = []
+        thetas = np.arange(0, np.pi / 2, .01)
+        Rs = [rotation_matrix(theta) for theta in thetas]
+        for roi in props:
+            if min(roi.convex_image.shape) == 1:
+                min_feret_diameters.append(1)
+            elif min(roi.convex_image.shape) == 2:
+                min_feret_diameters.append(2)
+            else:
+                identity_convex_hull = roi.convex_image
+                coordinates = np.vstack(find_contours(identity_convex_hull, 0.5, fully_connected='high'))
+                coordinates -= np.mean(coordinates, 0)
+                diams = []
+                # ws = []; hs = [];
+                for R in Rs:
+                    newcoords = np.dot(coordinates, R.T)
+                    w, h = np.max(newcoords, 0) - np.min(newcoords, 0)
+                    # ws.append(w); hs.append(h)
+                    diams.extend([w, h])
+                # p = pg.plot(thetas, ws, pen=pg.mkPen('r')); p.plot(thetas, hs, pen=pg.mkPen('g'))
+                min_feret_diameters.append(np.min(diams))
+        min_feret_diameters = np.array(min_feret_diameters)
+        return min_feret_diameters
+
     # def save_fiber_data(self):
     #     scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
     #     resizeFactor = g.myoquant.algorithm_gui.resize_factor_SpinBox.value()
@@ -437,12 +630,6 @@ class Myoquant():
     #         worksheet.write_row(row_idx + 1, 0, row_data)
     #     workbook.close()
 
-    # def save_data(self):
-    #     if self.dapi_img is None:
-    #         g.alert('Make sure a DAPI image is selected')
-    #     if self.dapi_labeled_img is None:
-    #         g.alert('Make sure a classified, DAPI image is selected')
-    #
     # def save_flr(self):
     #     if self.intensity_img is None:
     #         g.alert('Make sure an intensity image is selected')
@@ -462,124 +649,6 @@ class Myoquant():
     #     for row_idx, row_data in enumerate(X):
     #         worksheet.write_row(row_idx + 1, 0, row_data)
     #     workbook.close()
-
-    def calculate_dapi(self):
-        # Reset potentially old values=
-        self.overlapped_rois = []
-
-        if self.dapi_img is None:
-            g.alert('Make sure a DAPI image is selected')
-        elif self.dapi_labeled_img is None:
-            g.alert('Make sure a classified, DAPI image is selected')
-        elif self.eroded_roi_states is None:
-            g.alert('Make sure to run the Fiber Erosion before calculating DAPI Overlap')
-        else:
-            #Turn each image into lists
-            erodedList = list(chain.from_iterable(zip(*self.eroded_labeled_img)))
-            dapiList = list(chain.from_iterable(zip(*self.dapi_labeled_img)))
-
-            overlappedCoords = []
-            imageWidth = len(list(self.dapi_labeled_img))
-            count = 0
-
-            # loop to check if there is overlap between DAPI and the eroded rois
-            while count < len(erodedList):
-                if(erodedList[count] > 0 and dapiList[count] > 0):
-                    overlapX = math.floor(count / imageWidth) - 1
-                    overlapY = count % imageWidth
-                    newList = [overlapX, overlapY]
-                    overlappedCoords.append(newList)
-                count = count + 1
-
-            previousCentroid = 0
-
-            for coord in overlappedCoords:
-                roi_num = self.dapi_img.labeled_img[coord[1], coord[0]] - 1
-                prop = self.dapi_img.props[roi_num]
-
-                #Check that the last processed ROI's centroid is not the exact same as the current ROI's centroid
-                #This is a method of checking uniqueness that doesn't require the use of nested loops
-                centroid = prop.centroid
-                if centroid != previousCentroid:
-                    previousCentroid = centroid
-                    self.overlapped_rois.append(prop)
-
-            self.paintColoredImage()
-
-    def closeEvent(self, event):
-        print('Closing myoquant gui')
-        if self.classifier_window is not None:
-            self.classifier_window.close()
-        event.accept() # let the window close
-
-    def hard_set_update(self):
-        print('Manually filtering...')
-        X = g.win.get_features_array()
-        roi_states = self.roiStates
-
-        result_win = Classifier_Window(g.win.image, 'Filtered Trained Image')
-        max_area = g.myoquant.algorithm_gui.max_area_SpinBox.value()
-        min_area = g.myoquant.algorithm_gui.min_area_SpinBox.value()
-
-        # Area
-        roi_states[np.logical_or(X[:, 0]> max_area, X[:,0]< min_area)] = 2
-        result_win.set_roi_states(roi_states)
-
-        # Eccentricity
-        # roi_states[X[:, 1] < 15] = 2
-        # Convexity
-        # roi_states[X[:, 2] < 15] = 2
-        # Circularity
-        # roi_states[X[:, 3] < 15] = 2
-
-    def select_intensity_image(self):
-        print('Intensity image selected.')
-        self.intensity_img = self.intensity_img_selector.window.image
-
-    def select_labeled_image(self):
-        print('Labeled image selected.')
-        self.labeled_img = self.labeled_img_selector.window.labeled_img
-        self.roiStates = g.win.roi_states
-
-    def select_dapi_image(self):
-        print('DAPI image selected.')
-        #Reset potentially old values
-        self.dapi_rois = None
-        self.eroded_roi_states = None
-        self.overlapped_rois = None
-        #Select the image
-        self.dapi_img = Classifier_Window(self.dapi_img_selector.window.image, 'CNF Image')
-        self.dapi_img.set_roi_states(self.roiStates)
-        self.algorithm_gui.run_erosion_button.pressed.connect(self.dapi_img.run_erosion)
-        self.paintColoredImage()
-
-    def select_dapi_labeled_image(self):
-        print('DAPI labeled image selected.')
-        # Reset potentially old values
-        self.dapi_rois = None
-        self.eroded_roi_states = None
-        self.overlapped_rois = None
-        #Select the image
-        self.dapi_labeled_img = self.labeled_dapi_img_selector.window.image
-        self.dapi_rois = measure.regionprops(self.dapi_labeled_img)
-        self.paintColoredImage()
-
-    def paintColoredImage(self):
-        if self.dapi_img is not None:
-            self.dapi_img.set_roi_states(self.roiStates)
-            if self.overlapped_rois is not None:
-                for prop in self.overlapped_rois:
-                    x, y = prop.coords.T
-                    self.dapi_img.colored_img[x, y] = Classifier_Window.PURPLE
-            if self.eroded_roi_states is not None:
-                for prop in self.eroded_roi_states:
-                    x, y = prop.coords.T
-                    self.dapi_img.colored_img[x, y] = Classifier_Window.YELLOW
-            if self.dapi_rois is not None:
-                for prop in self.dapi_rois:
-                    x, y = prop.coords.T
-                    self.dapi_img.colored_img[x, y] = Classifier_Window.BLUE
-            self.dapi_img.update_image(self.dapi_img.colored_img)
 
 myoquant = Myoquant()
 g.myoquant = myoquant
