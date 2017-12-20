@@ -223,6 +223,10 @@ class Myoquant():
         self.validation_automatic_selector.valueChanged.connect(self.validate)
         gui.gridLayout_12.addWidget(self.validation_automatic_selector)
 
+        self.binary_img_selector = WindowSelector()
+        self.binary_img_selector.valueChanged.connect(self.select_binary_image)
+        gui.gridLayout_import_binary_image.addWidget(self.binary_img_selector)
+
         self.intensity_img_selector= WindowSelector()
         self.intensity_img_selector.valueChanged.connect(self.select_intensity_image)
         gui.gridLayout_intensity_image.addWidget(self.intensity_img_selector)
@@ -240,7 +244,6 @@ class Myoquant():
         gui.gridLayout_contains_DAPI.addWidget(self.labeled_dapi_img_selector)
 
         gui.run_DAPI_button.pressed.connect(self.calculate_dapi)
-        gui.load_binary_button.pressed.connect(self.load_binary_image)
         gui.save_button.pressed.connect(self.save_data)
 
         gui.closeEvent = self.closeEvent
@@ -270,16 +273,6 @@ class Myoquant():
         self.algorithm_gui.precision_label.setText(str(precision))
         self.algorithm_gui.recall_label.setText(str(recall))
         self.algorithm_gui.f1_score_label.setText(str(f1_score))
-
-    def load_binary_image_cmd(self, fname):
-        win = open_file(fname)
-        self.add_classifier_window(win.image)
-        win.close()
-
-    def load_binary_image(self):
-        win = open_file(from_gui=True)
-        self.add_classifier_window(win.image)
-        win.close()
 
     def create_markers_win(self):
         if self.original_window_selector.window is None:
@@ -315,15 +308,6 @@ class Myoquant():
             markers[I > thresh2] = 2
             self.markers_win.imageview.setImage(markers, autoRange=False, autoLevels=False)
 
-    def add_classifier_window(self, I):
-        if self.classifier_window is not None:
-            self.algorithm_gui.gridLayout_17.removeWidget(self.classifier_window)
-            self.classifier_window.setParent(None)
-            self.classifier_window.close()
-        self.classifier_window = Classifier_Window(I)
-        self.algorithm_gui.gridLayout_17.addWidget(self.classifier_window)
-        self.algorithm_gui.analyze_tab_widget.setCurrentIndex(1)
-
     def fill_boundaries_button(self):
         lower_bound = self.threshold1_slider.value()
         upper_bound = self.threshold2_slider.value()
@@ -335,7 +319,7 @@ class Myoquant():
             I_new = get_new_I(I_new, thresholds[i], thresholds[i + 1])
         self.filled_boundaries_win = Window(I_new, 'Filled Boundaries')
         classifier_image = remove_borders(I_new < upper_bound)
-        self.add_classifier_window(classifier_image)
+        self.classifier_window = Classifier_Window(classifier_image, 'Training Image')
 
     def get_norm_coeffs(self, X):
         mean = np.mean(X, 0)
@@ -456,6 +440,10 @@ class Myoquant():
         # roi_states[X[:, 2] < 15] = 2
         # Circularity
         # roi_states[X[:, 3] < 15] = 2
+
+    def select_binary_image(self):
+        print('Binary image selected.')
+        self.classifier_window = Classifier_Window(self.binary_img_selector.window.image, 'Training Image')
 
     def select_intensity_image(self):
         print('Intensity image selected.')
