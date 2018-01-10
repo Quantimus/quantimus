@@ -22,15 +22,19 @@ class Classifier_Window(Window):
     PURPLE = np.array([True, False, True])
     YELLOW = np.array([True, True, False])
 
+    TRAINING = "TRAINING"
+    DAPI = "DAPI"
+    FLR = "FLOURESCENCE"
+
     def __init__(self, tif, name='flika', filename='', commands=[], metadata=dict()):
         tif = tif.astype(np.bool)
         super().__init__(tif, name, filename, commands, metadata)
 
+        self.imageIdentifier = None
         self.labeled_img = label(tif, connectivity=2)
         self.dapi_labeled_img = label(tif, connectivity=2)
         self.nROIs = np.max(self.labeled_img)
         self.eroded_labeled_img = label(tif, connectivity=2)
-        self.roi_states = np.zeros(np.max(self.labeled_img), dtype=np.uint8)
         self.colored_img = np.repeat(self.image[:, :, np.newaxis], 3, 2)
         self.imageview.setImage(self.colored_img)
 
@@ -59,19 +63,46 @@ class Classifier_Window(Window):
             else:
                 prop = self.props[roi_num]
                 scaleFactor= g.myoquant.algorithm_gui.microns_per_pixel_SpinBox.value()
-                print('ROI #{}. area={}. eccentricity={}. convexity={}. perimeter={}. minor_axis_length={}. '
-                      .format(roi_num, prop.area, prop.eccentricity, prop.filled_area / prop.convex_area,
-                              prop.perimeter, prop.minor_axis_length))
-                old_state = self.roi_states[roi_num]
-                # added a yellow color for testing: roi_state=3
-                new_state = (old_state + 1 ) % 4
-                self.roi_states[roi_num] = new_state
-                color = [Classifier_Window.WHITE, Classifier_Window.GREEN, Classifier_Window.RED, Classifier_Window.YELLOW][new_state]
-                x, y = self.props[roi_num].coords.T
-                self.colored_img[x, y] = color
-                self.update_image(self.colored_img)
+                print('ROI #{}. area={}. eccentricity={}. convexity={}. circularity={}. perimeter={}. minor_axis_length={}. '
+                      .format(roi_num,
+                              prop.area,
+                              prop.eccentricity,
+                              prop.filled_area / prop.convex_area,
+                              (4 * np.pi * prop.filled_area) / prop.perimeter ** 2,
+                              prop.perimeter,
+                              prop.minor_axis_length))
+
+                #Different windows have different MouseClickEvent logic
+                if self.imageIdentifier == Classifier_Window.TRAINING:
+                    x, y = self.props[roi_num].coords.T
+                    self.colored_img[x, y] = self.trainingMouseClickEvent(roi_num)
+                    self.update_image(self.colored_img)
+                elif self.imageIdentifier == Classifier_Window.DAPI:
+                    x, y = self.props[roi_num].coords.T
+                    self.colored_img[x, y] = self.dapiMouseClickEvent(roi_num)
+                    self.update_image(self.colored_img)
 
         super().mouseClickEvent(ev)
+
+    def trainingMouseClickEvent(self, roi_num):
+        old_state = g.myoquant.roiStates[roi_num]
+        new_state = (old_state + 1) % 3
+        #Skip White. There is no need to have White when training
+        if new_state == 0:
+            new_state = new_state + 1
+        g.myoquant.roiStates[roi_num] = new_state
+        color = [Classifier_Window.WHITE, Classifier_Window.GREEN, Classifier_Window.RED][new_state]
+        return color
+
+    def dapiMouseClickEvent(self, roi_num):
+        old_state = g.myoquant.roiStates[roi_num]
+        new_state = (old_state + 1) % 4
+        # Skip White. There is no need to have White when training
+        if new_state == 0:
+            new_state = new_state + 1
+        g.myoquant.roiStates[roi_num] = new_state
+        color = [Classifier_Window.WHITE, Classifier_Window.GREEN, Classifier_Window.RED, Classifier_Window.PURPLE][new_state]
+        return color
 
     def update_image(self, image):
         viewrange = self.imageview.getView().viewRange()
@@ -104,7 +135,7 @@ class Classifier_Window(Window):
     def get_training_data(self):
         if self.features_array is None:
             self.features_array = self.get_features_array()
-        states = np.array([np.asscalar(a)for a in self.roi_states])
+        states = np.array([np.asscalar(a)for a in g.myoquant.roiStates])
         X = self.features_array[states > 0, :]
         y = states[states > 0]
         y[y == 2] = 0
@@ -125,13 +156,12 @@ class Classifier_Window(Window):
             X = np.concatenate((X, mfi[:,np.newaxis]),1)
         return X
 
-
     # if g.myoquant.intensity_img is not None:
     def save_classifications(self):
         filename = save_file_gui("Save classifications", filetypes='*.json')
         if filename is None:
             return None
-        states = [np.asscalar(a)for a in self.roi_states]
+        states = [np.asscalar(a)for a in g.myoquant.roiStates]
         data = {'states': states}
         json.dump(data, codecs.open(filename, 'w', encoding='utf-8'), separators=(',', ':'), sort_keys=True, indent=4)  ### this saves the array in .json format
 
@@ -146,7 +176,7 @@ class Classifier_Window(Window):
         json.dump(data, codecs.open(filename, 'w', encoding='utf-8'), separators=(',', ':'), sort_keys=True, indent=4)  ### this saves the array in .json format
 
     def create_binary_window(self):
-        true_rois = self.roi_states == 1
+        true_rois = g.myoquant.roiStates == 1
         bin_im = np.zeros_like(self.image, dtype=np.uint8)
         for i in np.nonzero(true_rois)[0]:
             x, y = self.props[i].coords.T
@@ -167,32 +197,37 @@ class Classifier_Window(Window):
         if len(roi_states) != self.nROIs:
             g.alert('The number of ROIs in this file does not match the number of ROIs in the image. Cannot import classifications')
         else:
-            self.set_roi_states(roi_states)
+            g.myoquant.roiStates(roi_states)
 
-    def set_roi_states(self, roi_states):
+    def set_roi_states(self):
         if self.props is None:
             self.props = measure.regionprops(self.labeled_img)
             g.myoquant.roiProps = self.props
-        self.roi_states = roi_states
         self.colored_img = np.repeat(self.image[:, :, np.newaxis], 3, 2)
-
-        for i in np.nonzero(roi_states == 1)[0]:
+        for i in np.nonzero(g.myoquant.roiStates == 1)[0]:
             x, y = self.props[i].coords.T
             self.colored_img[x, y] = Classifier_Window.GREEN
-        for i in np.nonzero(roi_states == 2)[0]:
+        for i in np.nonzero(g.myoquant.roiStates == 2)[0]:
             x, y = self.props[i].coords.T
             self.colored_img[x, y] = Classifier_Window.RED
+        for i in np.nonzero(g.myoquant.roiStates == 3)[0]:
+            x, y = self.props[i].coords.T
+            if self.imageIdentifier == Classifier_Window.DAPI:
+                self.colored_img[x, y] = Classifier_Window.PURPLE
+            else:
+                self.colored_img[x, y] = Classifier_Window.GREEN
         self.update_image(self.colored_img)
 
     def run_erosion(self):
         # Reset potentially old values=
         self.eroded_roi_states = None
-        g.myoquant.overlapped_rois = None
-
+        for i in np.nonzero(g.myoquant.roiStates == 3)[0]:
+            g.myoquant.roiStates[i] = 1
+        g.myoquant.isCNFCalculated = False
         #Set all values in eroded_labeled_img to 0
         #The appropriate coordinates will be marked as 1 later
         self.eroded_labeled_img[:len(self.eroded_labeled_img - 1)] = 0
-        for i in np.nonzero(self.roi_states == 1)[0]:
+        for i in np.nonzero(g.myoquant.roiStates == 1)[0]:
             # Reset the ROIs to green
             x, y = self.props[i].coords.T
             self.colored_img[x, y] = Classifier_Window.GREEN

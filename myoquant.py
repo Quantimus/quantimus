@@ -13,6 +13,7 @@ from skimage.measure import label
 from qtpy import uic
 from skimage.morphology import binary_dilation
 from itertools import chain
+import pyqtgraph as pg
 import json, codecs
 import math
 
@@ -191,9 +192,8 @@ class Myoquant():
         self.eroded_labeled_img = None
         self.eroded_roi_states = None
         self.dapi_rois = None
-        self.overlapped_rois = None
         self.roiProps = None
-
+        self.isCNFCalculated = False
 
         gui = uic.loadUi(os.path.join(os.path.dirname(__file__), 'myoquant.ui'))
         self.algorithm_gui = gui
@@ -244,6 +244,7 @@ class Myoquant():
         gui.gridLayout_contains_DAPI.addWidget(self.labeled_dapi_img_selector)
 
         gui.run_DAPI_button.pressed.connect(self.calculate_dapi)
+        gui.run_Flr_button.pressed.connect(self.calculate_flourescence)
         gui.save_button.pressed.connect(self.save_data)
 
         gui.closeEvent = self.closeEvent
@@ -279,8 +280,9 @@ class Myoquant():
             g.alert('You must select a Window before creating the markers window.')
         else:
             win = self.original_window_selector.window
+            needAlert = False
             if np.max(win.image) > 1:
-                g.alert("The window you select must have values between 0 and 1. Scaling the window now.")
+                needAlert = True
                 I = win.image.astype(np.float)
                 I -= np.min(I)
                 I /= np.max(I)
@@ -296,6 +298,8 @@ class Myoquant():
             self.threshold2_slider.setRange(np.min(original), np.max(original))
             self.threshold_slider_changed()
             fname = self.original_window_selector.value().filename
+            if needAlert:
+                g.alert("The window you select must have values between 0 and 1. Scaling the window now.")
 
     def threshold_slider_changed(self):
         if self.original_window_selector.window is None:
@@ -319,7 +323,7 @@ class Myoquant():
             I_new = get_new_I(I_new, thresholds[i], thresholds[i + 1])
         self.filled_boundaries_win = Window(I_new, 'Filled Boundaries')
         classifier_image = remove_borders(I_new < upper_bound)
-        self.classifier_window = Classifier_Window(classifier_image, 'Training Image')
+        self.classifier_window = Classifier_Window(classifier_image, 'Binary Window')
 
     def get_norm_coeffs(self, X):
         mean = np.mean(X, 0)
@@ -355,10 +359,11 @@ class Myoquant():
         clf.fit(X_train, y_train)
         X_test = self.normalize_data(self.classifier_window.get_features_array(), mu, sigma)
         y = clf.predict(X_test)
-        roi_states = np.zeros_like(y)
-        roi_states[y == 1] = 1
-        roi_states[y == 0] = 2
+        self.roiStates = np.zeros_like(y)
+        self.roiStates[y == 1] = 1
+        self.roiStates[y == 0] = 2
         result_win = Classifier_Window(self.classifier_window.image, 'Trained Image')
+        result_win.imageIdentifier = Classifier_Window.TRAINING
         X = self.classifier_window.features_array
 
         ######################################################################################
@@ -369,13 +374,9 @@ class Myoquant():
         #roi_states[X[:, 0] < 15] = 2 # Area must be smaller than 15 pixels
         #roi_states[X[:, 3] < 0.6] = 2 # Convexity must be smaller than 0.6
 
-        self.roiStates = roi_states
-        result_win.set_roi_states(roi_states)
+        result_win.set_roi_states()
 
     def calculate_dapi(self):
-        # Reset potentially old values=
-        self.overlapped_rois = [None] * len(self.roiStates)
-
         if self.dapi_img is None:
             g.alert('Make sure a DAPI image is selected')
         elif self.dapi_labeled_img is None:
@@ -393,7 +394,7 @@ class Myoquant():
             count = 0
             # loop to check if there is overlap between DAPI and the eroded rois
             while count < len(erodedList):
-                #add an item to the overlapped_rois list
+                #add an item to the overlapped coordinates list
                 if(erodedList[count] > 0 and dapiList[count] > 0):
                     overlapX = math.floor(count / imageWidth) - 1
                     overlapY = count % imageWidth
@@ -412,8 +413,40 @@ class Myoquant():
                     centroid = prop.centroid
                     if centroid != previousCentroid:
                         previousCentroid = centroid
-                        self.overlapped_rois[roi_num] = prop
+                        self.roiStates[roi_num] = 3
             self.paintDapiColoredImage()
+            self.isCNFCalculated = True
+
+    def calculate_flourescence(self):
+        Y = measure.regionprops(self.labeled_img, self.intensity_img)
+        rois = np.max(self.labeled_img)
+        roi_num = np.arange(rois)
+        intensity = np.array([p.mean_intensity for p in Y])
+        print(intensity)
+
+
+
+
+        # if self.intensity_img is None:
+        #     g.alert('Make sure an intensity image is selected')
+        # if self.labeled_img is None:
+        #     g.alert('Make sure a classified, labeled image is selected')
+        # Y = measure.regionprops(self.labeled_img, self.intensity_img)
+        # rois = np.max(self.labeled_img)
+        # roi_num = np.arange(rois)
+        # intensity = np.array([p.mean_intensity for p in Y])
+        # X = np.stack((roi_num,intensity),1)
+        # X = X[self.roiStates == 1]
+        # fileSaveAsName = save_file_gui('Save file as...', filetypes='.xlsx')
+        # workbook = xlsxwriter.Workbook(fileSaveAsName)
+        # worksheet = workbook.add_worksheet()
+        # header = ['ROI #','Overlay Intensity']
+        # worksheet.write_row(0, 0, header)
+        # for row_idx, row_data in enumerate(X):
+        #     worksheet.write_row(row_idx + 1, 0, row_data)
+        # workbook.close()
+
+
 
     def closeEvent(self, event):
         print('Closing myoquant gui')
@@ -424,35 +457,63 @@ class Myoquant():
     def hard_set_update(self):
         print('Manually filtering...')
         X = g.win.get_features_array()
-        roi_states = self.roiStates
 
         result_win = Classifier_Window(g.win.image, 'Filtered Trained Image')
-        max_area = g.myoquant.algorithm_gui.max_area_SpinBox.value()
+        result_win.imageIdentifier = Classifier_Window.TRAINING
+        min_circularity = g.myoquant.algorithm_gui.min_circularity_SpinBox.value()
+        max_circularity = g.myoquant.algorithm_gui.max_circularity_SpinBox.value()
+        circularityCheckbox = g.myoquant.algorithm_gui.circularity_CheckBox
         min_area = g.myoquant.algorithm_gui.min_area_SpinBox.value()
+        max_area = g.myoquant.algorithm_gui.max_area_SpinBox.value()
+        areaCheckbox = g.myoquant.algorithm_gui.area_CheckBox
+        min_convexity = g.myoquant.algorithm_gui.min_convexity_SpinBox.value()
+        max_convexity = g.myoquant.algorithm_gui.max_convexity_SpinBox.value()
+        convexityCheckbox = g.myoquant.algorithm_gui.convexity_CheckBox
+        min_eccentricity = g.myoquant.algorithm_gui.min_eccentricity_SpinBox.value()
+        max_eccentricity = g.myoquant.algorithm_gui.max_eccentricity_SpinBox.value()
+        eccentricityCheckbox = g.myoquant.algorithm_gui.eccentricity_CheckBox
 
-        # Area
-        roi_states[np.logical_or(X[:, 0]> max_area, X[:,0]< min_area)] = 2
-        result_win.set_roi_states(roi_states)
+        #Area
+        if areaCheckbox.isChecked():
+            self.roiStates[np.logical_or(X[:, 0] > max_area, X[:,0] < min_area)] = 2
+        #Eccentricity
+        if eccentricityCheckbox.isChecked():
+            self.roiStates[np.logical_or(X[:, 1] > max_circularity, X[:, 1] < min_circularity)] = 2
+        #Convexity
+        if convexityCheckbox.isChecked():
+            self.roiStates[np.logical_or(X[:, 2] > max_convexity, X[:, 2] < min_convexity)] = 2
+        #Circularity
+        if circularityCheckbox.isChecked():
+            self.roiStates[np.logical_or(X[:, 3] > max_eccentricity, X[:, 3] < min_eccentricity)] = 2
 
-        # Eccentricity
-        # roi_states[X[:, 1] < 15] = 2
-        # Convexity
-        # roi_states[X[:, 2] < 15] = 2
-        # Circularity
-        # roi_states[X[:, 3] < 15] = 2
+        result_win.set_roi_states()
 
     def select_binary_image(self):
         print('Binary image selected.')
         self.classifier_window = Classifier_Window(self.binary_img_selector.window.image, 'Training Image')
+        self.classifier_window.imageIdentifier = Classifier_Window.TRAINING
+        self.roiStates = np.zeros(np.max(self.classifier_window.labeled_img), dtype=np.uint8)
 
     def select_intensity_image(self):
         print('Intensity image selected.')
         self.intensity_img = self.intensity_img_selector.window.image
+        self.labeled_img.set_bg_im()
+
+        self.labeled_img.bg_im_dialog.setWindowTitle("Select an image")
+
+        if self.labeled_img.bg_im_dialog.parent.bg_im is not None:
+            self.labeled_img.bg_im_dialog.parent.imageview.view.removeItem(self.labeled_img.bg_im_dialog.parent.bg_im)
+            self.labeled_img.bg_im_dialog.bg_im = None
+        self.labeled_img.bg_im_dialog.parent.bg_im = pg.ImageItem(self.intensity_img_selector.window.imageview.imageItem.image)
+        self.labeled_img.bg_im_dialog.parent.bg_im.setOpacity(self.labeled_img.bg_im_dialog.alpha_slider.value())
+        self.labeled_img.bg_im_dialog.parent.imageview.view.addItem(self.labeled_img.bg_im_dialog.parent.bg_im)
+
 
     def select_labeled_image(self):
         print('Labeled image selected.')
         self.labeled_img = Classifier_Window(self.labeled_img_selector.window.labeled_img, 'Flourescence Image')
-        self.labeled_img.set_roi_states(self.roiStates)
+        self.labeled_img.imageIdentifier = Classifier_Window.FLR
+        self.labeled_img.set_roi_states()
         self.paintFlrColoredImage()
 
     def select_dapi_image(self):
@@ -460,10 +521,13 @@ class Myoquant():
         #Reset potentially old data
         self.dapi_rois = None
         self.eroded_roi_states = None
-        self.overlapped_rois = None
+        for i in np.nonzero(self.roiStates == 3)[0]:
+            self.roiStates[i] = 1
+        self.isCNFCalculated = False
         #Select the image
         self.dapi_img = Classifier_Window(self.dapi_img_selector.window.image, 'CNF Image')
-        self.dapi_img.set_roi_states(self.roiStates)
+        self.dapi_img.imageIdentifier = Classifier_Window.DAPI
+        self.dapi_img.set_roi_states()
         self.algorithm_gui.run_erosion_button.pressed.connect(self.dapi_img.run_erosion)
         self.paintDapiColoredImage()
 
@@ -472,45 +536,51 @@ class Myoquant():
         # Reset potentially old data
         self.dapi_rois = None
         self.eroded_roi_states = None
-        self.overlapped_rois = None
+        for i in np.nonzero(self.roiStates == 3)[0]:
+            self.roiStates[i] = 1
+        self.isCNFCalculated = False
         #Select the image
         self.dapi_labeled_img = self.labeled_dapi_img_selector.window.image
         self.dapi_rois = measure.regionprops(self.dapi_labeled_img)
-        self.paintDapiColoredImage()
+        #Overlay the DAPI onto the image
+        self.dapi_img.set_bg_im()
+
+        self.dapi_img.bg_im_dialog.setWindowTitle("Select an image")
+
+        if self.dapi_img.bg_im_dialog.parent.bg_im is not None:
+            self.dapi_img.bg_im_dialog.parent.imageview.view.removeItem(self.dapi_img.bg_im_dialog.parent.bg_im)
+            self.dapi_img.bg_im_dialog.bg_im = None
+        self.dapi_img.bg_im_dialog.parent.bg_im = pg.ImageItem(self.labeled_dapi_img_selector.window.imageview.imageItem.image)
+        self.dapi_img.bg_im_dialog.parent.bg_im.setOpacity(self.dapi_img.bg_im_dialog.alpha_slider.value())
+        self.dapi_img.bg_im_dialog.parent.imageview.view.addItem(self.dapi_img.bg_im_dialog.parent.bg_im)
 
     def paintDapiColoredImage(self):
         if self.dapi_img is not None:
-            self.dapi_img.set_roi_states(self.roiStates)
-            if self.overlapped_rois is not None:
-                for prop in self.overlapped_rois:
-                    if prop is not None:
-                        x, y = prop.coords.T
-                        self.dapi_img.colored_img[x, y] = Classifier_Window.PURPLE
+            #Green, Red, and Purple
+            self.dapi_img.set_roi_states()
+            #Yellow eroded ROIS
             if self.eroded_roi_states is not None:
                 for prop in self.eroded_roi_states:
                     x, y = prop.coords.T
                     self.dapi_img.colored_img[x, y] = Classifier_Window.YELLOW
-            if self.dapi_rois is not None:
-                for prop in self.dapi_rois:
-                    x, y = prop.coords.T
-                    self.dapi_img.colored_img[x, y] = Classifier_Window.BLUE
             self.dapi_img.update_image(self.dapi_img.colored_img)
 
     def paintFlrColoredImage(self):
         if self.labeled_img is not None:
-            self.labeled_img.set_roi_states(self.roiStates)
+            self.labeled_img.set_roi_states()
 
     def save_data(self):
         scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
         resizeFactor = g.myoquant.algorithm_gui.resize_factor_SpinBox.value()
-        minferetProps = self.calc_min_feret_diameters(self.roiProps)
+        #minferetProps = self.calc_min_feret_diameters(self.roiProps)
 
         # Set up the multi-dimensional array to store all of the data
         dataArray = [['ROI #'], ['Area'], ['Minferet'], ['MFI'], ['CNF']]
 
         count = 0
         for prop in self.roiProps:
-            if self.roiStates[count] == 1:
+            #Green States
+            if self.roiStates[count] == 1 or self.roiStates[count] == 3:
                 # ROI Number
                 dataArray[0].append(count)
 
@@ -520,15 +590,15 @@ class Myoquant():
                 dataArray[1].append(area)
 
                 # MinFeret
-                minferet = minferetProps[count] * (scaleFactor / resizeFactor)
-                dataArray[2].append(minferet)
+                #minferet = minferetProps[count] * (scaleFactor / resizeFactor)
+                #dataArray[2].append(minferet)
 
                 #MFI
 
 
-                #CNF
-                if self.overlapped_rois is not None:
-                    if self.overlapped_rois[count] is not None:
+                #CNF - Purple States
+                if self.isCNFCalculated:
+                    if self.roiStates[count] == 3:
                         dataArray[4].append("1")
                     else:
                         dataArray[4].append("0")
@@ -548,7 +618,6 @@ class Myoquant():
 
     def calc_min_feret_diameters(self, props):
         '''  calculates all the minimum feret diameters for regions in props '''
-        # props = g.win.props
         min_feret_diameters = []
         thetas = np.arange(0, np.pi / 2, .01)
         Rs = [rotation_matrix(theta) for theta in thetas]
@@ -562,13 +631,10 @@ class Myoquant():
                 coordinates = np.vstack(find_contours(identity_convex_hull, 0.5, fully_connected='high'))
                 coordinates -= np.mean(coordinates, 0)
                 diams = []
-                # ws = []; hs = [];
                 for R in Rs:
                     newcoords = np.dot(coordinates, R.T)
                     w, h = np.max(newcoords, 0) - np.min(newcoords, 0)
-                    # ws.append(w); hs.append(h)
                     diams.extend([w, h])
-                # p = pg.plot(thetas, ws, pen=pg.mkPen('r')); p.plot(thetas, hs, pen=pg.mkPen('g'))
                 min_feret_diameters.append(np.min(diams))
         min_feret_diameters = np.array(min_feret_diameters)
         return min_feret_diameters
