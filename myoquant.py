@@ -1,42 +1,23 @@
 import os
 import scipy
-import numpy as np
 from distutils.version import StrictVersion
-import skimage
 import xlsxwriter
-from skimage.filters import sobel
-from skimage.morphology import watershed
 from skimage.filters import gabor_kernel
 from scipy.signal import convolve2d
-from skimage import measure
-from skimage.measure import label
 from qtpy import uic
 from skimage.morphology import binary_dilation
 from itertools import chain
 import pyqtgraph as pg
-import json, codecs
 import math
-
-
 import flika
-from flika.roi import makeROI
-from flika import global_vars as g
-from flika.process import difference_of_gaussians, threshold, zproject, remove_small_blobs
-from flika.window import Window
-from flika.process.file_ import open_file, close
-from flika.utils.misc import save_file_gui, open_file_gui
+
+from .marking_binary_window import *
 
 flika_version = flika.__version__
 if StrictVersion(flika_version) < StrictVersion('0.2.23'):
     from flika.process.BaseProcess import BaseProcess, WindowSelector, SliderLabel, CheckBox
 else:
     from flika.utils.BaseProcess import BaseProcess, WindowSelector, SliderLabel, CheckBox
-
-
-from .marking_binary_window import Classifier_Window
-from .marking_binary_window import *
-#from .marking_binary_window import Classifier_Window
-from . import mysql_interface
 
 def show_label_img(binary_img):
     A = label(binary_img, connectivity=2)
@@ -47,10 +28,6 @@ def show_label_img(binary_img):
 
 def get_important_features(binary_image):
     features = {}
-    # important features include:
-    # convexity: ratio of convex_image area to image area
-    # area: number of pixels total
-    # eccentricity: 0 is a circle, 1 is a line
     label_img = label(binary_image, connectivity=2)
     props = measure.regionprops(label_img)
     features['convexity'] = np.array([p.filled_area / p.convex_area for p in props])
@@ -138,12 +115,10 @@ def get_border_between_two_props(prop1, prop2):
     top_left = bbox[:2]
     a = prop1.coords - top_left
     I1[a[:, 0], a[:, 1]] = 1
-    # Window(I1.astype(np.int) + I2.astype(np.int))
     I1_expanded1 = binary_dilation(I1)
     I1_expanded2 = binary_dilation(binary_dilation(I1_expanded1))
     I1_expanded2[I1_expanded1] = 0
     border = I1_expanded2 * I2
-    #Window(I1.astype(np.int) + I2.astype(np.int) + 2*border.astype(np.int))
     return np.argwhere(border) + top_left
 
 def get_new_I(I, thresh1=.20, thresh2=.30):
@@ -157,20 +132,17 @@ def get_new_I(I, thresh1=.20, thresh2=.30):
     #  The maximum of the labeled image is the number of contiguous regions, or ROIs.
     nROIs = np.max(label_im_1)
     for roi_num in np.arange(nROIs):
-        # roi_num = 227 - 1
         prop1 = props_1[roi_num]
         x, y = prop1.coords[0,:]
         prop2 = props_2[label_im_2[x, y] - 1]
 
         if prop1.area > 65 * resizeFactor :
-            #this is the new, faster, calculation
             area_ratio = prop2.area/prop1.area
             if area_ratio > 1.2:
                 border_idx = get_border_between_two_props(prop1, prop2)
                 borders[border_idx[:,0], border_idx[:, 1]] = 1
     I_new = np.copy(I)
     I_new[np.where(borders)] = 2
-    #I_new = I + .2 * borders
     return I_new
 
 class Myoquant():
@@ -182,19 +154,34 @@ class Myoquant():
         pass
 
     def gui(self):
-        self.roiStates = None
+        #Windows
         self.classifier_window = None
-        self.lines_win = None
-        self.intensity_img = None
+        self.trained_img = None
+        self.filtered_trained_img = None
         self.dapi_img = None
-        self.dapi_labeled_img = None
-        self.labeled_img = None
+        self.dapi_binarized_img = None
         self.eroded_labeled_img = None
+        self.flourescence_img = None
+        self.intensity_img = None
+
+        #ROIs and States
+        self.roiStates = None
         self.eroded_roi_states = None
         self.dapi_rois = None
         self.roiProps = None
-        self.isCNFCalculated = False
+        self.flourescenceIntensities = None
 
+        #Printing Data
+        self.saved_flourescence_rois = None
+        self.saved_flourescence_states = None
+        self.saved_dapi_rois = None
+        self.saved_dapi_states = None
+
+        # Misc
+        self.isCNFCalculated = False
+        self.isIntensityCalculated = False
+
+        #GUI Setup
         gui = uic.loadUi(os.path.join(os.path.dirname(__file__), 'myoquant.ui'))
         self.algorithm_gui = gui
         gui.show()
@@ -212,9 +199,10 @@ class Myoquant():
         gui.gridLayout_threshold_one.addWidget(self.threshold1_slider)
         gui.gridLayout_threshold_two.addWidget(self.threshold2_slider)
         gui.fill_boundaries_button.pressed.connect(self.fill_boundaries_button)
-        gui.SVM_button.pressed.connect(self.run_SVM_classification_on_labeled_image)
+        gui.SVM_button.pressed.connect(self.run_SVM_classification_on_image)
         gui.SVM_saved_button.pressed.connect(self.run_SVM_classification_on_saved_training_data)
-        gui.manual_filter_button.pressed.connect(self.hard_set_update)
+        gui.load_classification_button.pressed.connect(self.load_classification_to_trained_image)
+        gui.manual_filter_button.pressed.connect(self.filter_update)
 
         self.validation_manual_selector = WindowSelector()
         self.validation_manual_selector.valueChanged.connect(self.validate)
@@ -231,21 +219,23 @@ class Myoquant():
         self.intensity_img_selector.valueChanged.connect(self.select_intensity_image)
         gui.gridLayout_intensity_image.addWidget(self.intensity_img_selector)
 
-        self.labeled_img_selector= WindowSelector()
-        self.labeled_img_selector.valueChanged.connect(self.select_labeled_image)
-        gui.gridLayout_labeled_image.addWidget(self.labeled_img_selector)
+        self.flourescence_img_selector= WindowSelector()
+        self.flourescence_img_selector.valueChanged.connect(self.select_flourescence_image)
+        gui.gridLayout_flourescence_image.addWidget(self.flourescence_img_selector)
 
         self.dapi_img_selector = WindowSelector()
         self.dapi_img_selector.valueChanged.connect(self.select_dapi_image)
         gui.gridLayout_import_DAPI.addWidget(self.dapi_img_selector)
 
-        self.labeled_dapi_img_selector = WindowSelector()
-        self.labeled_dapi_img_selector.valueChanged.connect(self.select_dapi_labeled_image)
-        gui.gridLayout_contains_DAPI.addWidget(self.labeled_dapi_img_selector)
+        self.binarized_dapi_img_selector = WindowSelector()
+        self.binarized_dapi_img_selector.valueChanged.connect(self.select_dapi_binarized_image)
+        gui.gridLayout_contains_DAPI.addWidget(self.binarized_dapi_img_selector)
 
         gui.run_DAPI_button.pressed.connect(self.calculate_dapi)
+        gui.save_DAPI_button.pressed.connect(self.save_dapi)
         gui.run_Flr_button.pressed.connect(self.calculate_flourescence)
-        gui.save_button.pressed.connect(self.save_data)
+        gui.save_flourescence_button.pressed.connect(self.save_flourescence)
+        gui.print_button.pressed.connect(self.print_data)
 
         gui.closeEvent = self.closeEvent
 
@@ -313,6 +303,9 @@ class Myoquant():
             self.markers_win.imageview.setImage(markers, autoRange=False, autoLevels=False)
 
     def fill_boundaries_button(self):
+        #Reset any data currently saved in the system
+        #self.resetAllData()
+
         lower_bound = self.threshold1_slider.value()
         upper_bound = self.threshold2_slider.value()
         thresholds = np.linspace(lower_bound, upper_bound, 8)
@@ -335,7 +328,26 @@ class Myoquant():
         X = X / (2 * std)
         return X
 
-    def run_SVM_classification_on_labeled_image(self):
+    def cleanupWindowData(self):
+        print('Cleaning up window data')
+
+    def closeEvent(self, event):
+        print('Closing myoquant gui')
+        if self.classifier_window is not None:
+            self.classifier_window.close()
+        event.accept() # let the window close
+
+    def select_binary_image(self):
+        # Reset any data currently saved in the system
+        #self.resetAllData()
+
+        print('Binary image selected.')
+        self.classifier_window = Classifier_Window(self.binary_img_selector.window.image, 'Training Image')
+        self.classifier_window.imageIdentifier = Classifier_Window.TRAINING
+        self.roiStates = np.zeros(np.max(self.classifier_window.labeled_img), dtype=np.uint8)
+        self.classifier_window.window_states = np.copy(self.roiStates)
+
+    def run_SVM_classification_on_image(self):
         X_train, y_train = self.classifier_window.get_training_data()
         mu, sigma = self.get_norm_coeffs(self.classifier_window.features_array)
         self.run_SVM_classification_general(X_train, y_train, mu, sigma)
@@ -353,43 +365,204 @@ class Myoquant():
 
     def run_SVM_classification_general(self, X_train, y_train, mu, sigma):
         print('Running SVM classification')
-        from sklearn import svm
-        X_train = self.normalize_data(X_train, mu, sigma)
-        clf = svm.SVC()
-        clf.fit(X_train, y_train)
-        X_test = self.normalize_data(self.classifier_window.get_features_array(), mu, sigma)
-        y = clf.predict(X_test)
-        self.roiStates = np.zeros_like(y)
-        self.roiStates[y == 1] = 1
-        self.roiStates[y == 0] = 2
-        result_win = Classifier_Window(self.classifier_window.image, 'Trained Image')
-        result_win.imageIdentifier = Classifier_Window.TRAINING
-        X = self.classifier_window.features_array
+        try:
+            from sklearn import svm
+            X_train = self.normalize_data(X_train, mu, sigma)
+            clf = svm.SVC()
+            clf.fit(X_train, y_train)
+            X_test = self.normalize_data(self.classifier_window.get_features_array(), mu, sigma)
+            y = clf.predict(X_test)
+            self.roiStates = np.zeros_like(y)
+            self.roiStates[y == 1] = 1
+            self.roiStates[y == 0] = 2
+            self.trained_img = Classifier_Window(self.classifier_window.image, 'Trained Image')
+            self.trained_img.imageIdentifier = Classifier_Window.TRAINING
+            self.trained_img.window_states = np.copy(self.roiStates)
+            ######################################################################################
+            ##############   Add hand-designed rules here if you want  ###########################
+            ######################################################################################
+            # For instance, you could remove all ROIs smaller than 15 pixels like this:
+            #X = self.classifier_window.features_array
+            #roi_states[X[:, 0] < 15] = 2 # Area must be smaller than 15 pixels
+            #roi_states[X[:, 3] < 0.6] = 2 # Convexity must be smaller than 0.6
 
-        ######################################################################################
-        ##############   Add hand-designed rules here if you want  ###########################
-        ######################################################################################
-        # For instance, you could remove all ROIs smaller than 15 pixels like this:
+            self.trained_img.set_roi_states()
+            self.roiStates = np.copy(self.trained_img.window_states)
+        except ValueError:
+            g.alert('Please train a minimum of 1 positive and 1 negative sample')
 
-        #roi_states[X[:, 0] < 15] = 2 # Area must be smaller than 15 pixels
-        #roi_states[X[:, 3] < 0.6] = 2 # Convexity must be smaller than 0.6
+    def load_classification_to_trained_image(self):
+        print('Loading Classification to Trained Image')
+        self.trained_img = Classifier_Window(self.classifier_window.image, 'Trained Image')
+        self.trained_img.imageIdentifier = Classifier_Window.TRAINING
+        self.trained_img.window_states = np.copy(self.roiStates)
+        self.trained_img.load_classifications_act()
+        self.trained_img.set_roi_states()
 
-        result_win.set_roi_states()
+    def filter_update(self):
+        print('Manually filtering...')
+        try:
+            min_circularity = g.myoquant.algorithm_gui.min_circularity_SpinBox.value()
+            max_circularity = g.myoquant.algorithm_gui.max_circularity_SpinBox.value()
+            circularityCheckbox = g.myoquant.algorithm_gui.circularity_CheckBox
+            min_area = g.myoquant.algorithm_gui.min_area_SpinBox.value()
+            max_area = g.myoquant.algorithm_gui.max_area_SpinBox.value()
+            areaCheckbox = g.myoquant.algorithm_gui.area_CheckBox
+            min_convexity = g.myoquant.algorithm_gui.min_convexity_SpinBox.value()
+            max_convexity = g.myoquant.algorithm_gui.max_convexity_SpinBox.value()
+            convexityCheckbox = g.myoquant.algorithm_gui.convexity_CheckBox
+            min_eccentricity = g.myoquant.algorithm_gui.min_eccentricity_SpinBox.value()
+            max_eccentricity = g.myoquant.algorithm_gui.max_eccentricity_SpinBox.value()
+            eccentricityCheckbox = g.myoquant.algorithm_gui.eccentricity_CheckBox
+
+            features = self.trained_img.get_features_array()
+            states = np.copy(self.trained_img.window_states)
+            count = 0
+
+            for feature in features:
+                if self.trained_img.window_states[count] == 1:
+                    #Area
+                    if areaCheckbox.isChecked():
+                        if feature[0] >= min_area and feature[0] <= max_area:
+                            states[count] = 1
+                        else:
+                            states[count] = 2
+                    #Eccentricity
+                    if eccentricityCheckbox.isChecked():
+                        if states[count] == 1 and feature[1] >= min_eccentricity and feature[1] <= max_eccentricity:
+                            states[count] = 1
+                        else:
+                            states[count] = 2
+                    #Convexity
+                    if convexityCheckbox.isChecked():
+                        if states[count] == 1 and feature[2] >= min_convexity and feature[2] <= max_convexity:
+                            states[count] = 1
+                        else:
+                            states[count] = 2
+                    #Circularity
+                    if circularityCheckbox.isChecked():
+                        if states[count] == 1 and feature[3] >= min_circularity and feature[3] <= max_circularity:
+                            states[count] = 1
+                        else:
+                            states[count] = 2
+                else:
+                    states[count] = 2
+                count = count + 1
+
+            self.filtered_trained_img = Classifier_Window(self.trained_img.image, 'Filtered Trained Image')
+            self.filtered_trained_img.imageIdentifier = Classifier_Window.TRAINING
+            self.filtered_trained_img.window_states = states
+            self.filtered_trained_img.set_roi_states()
+            self.roiStates = self.filtered_trained_img.window_states
+        except AttributeError:
+            g.alert('Please run the SVM Classification Training')
+
+    def select_flourescence_image(self):
+        print('Flourescence image selected.')
+        # Reset potentially old data
+        self.resetFlourescenceData()
+        self.flourescence_img = None
+        # Select the image
+        self.flourescence_img = Classifier_Window(self.flourescence_img_selector.window.image, 'Flourescence Image')
+        self.flourescence_img.imageIdentifier = Classifier_Window.FLR
+        self.flourescence_img.window_states = np.copy(self.flourescence_img_selector.window.window_states)
+        self.paintFlrColoredImage()
+
+    def select_intensity_image(self):
+        print('Intensity image selected.')
+        # Reset potentially old data
+        self.resetFlourescenceData()
+        # Select the image
+        self.intensity_img = self.intensity_img_selector.window.image
+        self.flourescence_img.set_bg_im()
+        self.flourescence_img.bg_im_dialog.setWindowTitle("Select an image")
+        if self.flourescence_img.bg_im_dialog.parent.bg_im is not None:
+            self.flourescence_img.bg_im_dialog.parent.imageview.view.removeItem(self.flourescence_img.bg_im_dialog.parent.bg_im)
+            self.flourescence_img.bg_im_dialog.bg_im = None
+        #Remove the 'Select Window' button from the popup
+        self.flourescence_img.bg_im_dialog.formlayout.removeRow(0)
+        self.flourescence_img.bg_im_dialog.parent.bg_im = pg.ImageItem(self.intensity_img)
+        self.flourescence_img.bg_im_dialog.parent.bg_im.setOpacity(self.flourescence_img.bg_im_dialog.alpha_slider.value())
+        self.flourescence_img.bg_im_dialog.parent.imageview.view.addItem(self.flourescence_img.bg_im_dialog.parent.bg_im)
+
+    def calculate_flourescence(self):
+        print('Calculating Flourescence Intensity')
+        if self.flourescence_img is None:
+            g.alert('Make sure a Flourescence image is selected')
+        elif self.intensity_img is None:
+            g.alert('Make sure an Intensity image is selected')
+        else:
+            intensityProps = measure.regionprops(self.flourescence_img.labeled_img, self.intensity_img)
+            rois = np.max(self.flourescence_img.labeled_img)
+            roi_num = np.arange(rois)
+            self.flourescenceIntensities = np.array([p.mean_intensity for p in intensityProps])
+            self.isIntensityCalculated = True
+
+    def save_flourescence(self):
+        print("Saving Flourescence Data")
+        if self.isIntensityCalculated == False:
+            g.alert("Make sure the Flourescence Intensity has been calculated")
+        else:
+            self.saved_flourescence_rois = self.flourescence_img.window_props
+            self.saved_flourescence_states = np.copy(self.flourescence_img.window_states)
+
+    def paintFlrColoredImage(self):
+        if self.flourescence_img is not None:
+            self.flourescence_img.set_roi_states()
+
+    def resetFlourescenceData(self):
+        self.flourescenceIntensities = None
+        self.isIntensityCalculated = False
+        self.saved_flourescence_rois = None
+        self.saved_flourescence_states = None
+
+    def select_dapi_image(self):
+        print('DAPI image selected.')
+        #Reset potentially old data
+        self.resetDAPIData
+        #Select the image
+        self.dapi_img = Classifier_Window(self.dapi_img_selector.window.image, 'CNF Image')
+        self.dapi_img.imageIdentifier = Classifier_Window.DAPI
+        self.dapi_img.window_states = np.copy(self.dapi_img_selector.window.window_states)
+        self.algorithm_gui.run_erosion_button.pressed.connect(self.dapi_img.run_erosion)
+        self.paintDapiColoredImage()
+
+    def select_dapi_binarized_image(self):
+        print('DAPI image selected.')
+        # Reset potentially old data
+        self.resetDAPIData()
+        #Select the image
+        self.dapi_binarized_img = self.binarized_dapi_img_selector.window.image
+        self.dapi_rois = measure.regionprops(self.dapi_binarized_img)
+        #Overlay the DAPI onto the image
+        self.dapi_img.set_bg_im()
+
+        self.dapi_img.bg_im_dialog.setWindowTitle("Select an image")
+
+        if self.dapi_img.bg_im_dialog.parent.bg_im is not None:
+            self.dapi_img.bg_im_dialog.parent.imageview.view.removeItem(self.dapi_img.bg_im_dialog.parent.bg_im)
+            self.dapi_img.bg_im_dialog.bg_im = None
+        self.dapi_img.bg_im_dialog.formlayout.removeRow(0)
+        self.dapi_img.bg_im_dialog.parent.bg_im = pg.ImageItem(self.binarized_dapi_img_selector.window.imageview.imageItem.image)
+        self.dapi_img.bg_im_dialog.parent.bg_im.setOpacity(self.dapi_img.bg_im_dialog.alpha_slider.value())
+        self.dapi_img.bg_im_dialog.parent.imageview.view.addItem(self.dapi_img.bg_im_dialog.parent.bg_im)
+        self.paintDapiColoredImage()
 
     def calculate_dapi(self):
+        print('Calculating DAPI')
         if self.dapi_img is None:
             g.alert('Make sure a DAPI image is selected')
-        elif self.dapi_labeled_img is None:
+        elif self.dapi_binarized_img is None:
             g.alert('Make sure a classified, DAPI image is selected')
         elif self.eroded_roi_states is None:
             g.alert('Make sure to run the Fiber Erosion before calculating DAPI Overlap')
         else:
             #Turn each image into lists
             erodedList = list(chain.from_iterable(zip(*self.eroded_labeled_img)))
-            dapiList = list(chain.from_iterable(zip(*self.dapi_labeled_img)))
+            dapiList = list(chain.from_iterable(zip(*self.dapi_binarized_img)))
 
             overlappedCoords = []
-            imageWidth = len(list(self.dapi_labeled_img))
+            imageWidth = len(list(self.dapi_binarized_img))
 
             count = 0
             # loop to check if there is overlap between DAPI and the eroded rois
@@ -406,153 +579,24 @@ class Myoquant():
 
             for coord in overlappedCoords:
                 roi_num = self.dapi_img.labeled_img[coord[1], coord[0]] - 1
-                if self.roiStates[roi_num] == 1:
-                    prop = self.dapi_img.props[roi_num]
+                if self.dapi_img.window_states[roi_num] == 1:
+                    prop = self.dapi_img.window_props[roi_num]
                     #Check that the last processed ROI's centroid is not the exact same as the current ROI's centroid
                     #This is a method of checking uniqueness that doesn't require the use of nested loops
                     centroid = prop.centroid
                     if centroid != previousCentroid:
                         previousCentroid = centroid
-                        self.roiStates[roi_num] = 3
+                        self.dapi_img.window_states[roi_num] = 3
             self.paintDapiColoredImage()
             self.isCNFCalculated = True
 
-    def calculate_flourescence(self):
-        Y = measure.regionprops(self.labeled_img, self.intensity_img)
-        rois = np.max(self.labeled_img)
-        roi_num = np.arange(rois)
-        intensity = np.array([p.mean_intensity for p in Y])
-        print(intensity)
-
-
-
-
-        # if self.intensity_img is None:
-        #     g.alert('Make sure an intensity image is selected')
-        # if self.labeled_img is None:
-        #     g.alert('Make sure a classified, labeled image is selected')
-        # Y = measure.regionprops(self.labeled_img, self.intensity_img)
-        # rois = np.max(self.labeled_img)
-        # roi_num = np.arange(rois)
-        # intensity = np.array([p.mean_intensity for p in Y])
-        # X = np.stack((roi_num,intensity),1)
-        # X = X[self.roiStates == 1]
-        # fileSaveAsName = save_file_gui('Save file as...', filetypes='.xlsx')
-        # workbook = xlsxwriter.Workbook(fileSaveAsName)
-        # worksheet = workbook.add_worksheet()
-        # header = ['ROI #','Overlay Intensity']
-        # worksheet.write_row(0, 0, header)
-        # for row_idx, row_data in enumerate(X):
-        #     worksheet.write_row(row_idx + 1, 0, row_data)
-        # workbook.close()
-
-
-
-    def closeEvent(self, event):
-        print('Closing myoquant gui')
-        if self.classifier_window is not None:
-            self.classifier_window.close()
-        event.accept() # let the window close
-
-    def hard_set_update(self):
-        print('Manually filtering...')
-        X = g.win.get_features_array()
-
-        result_win = Classifier_Window(g.win.image, 'Filtered Trained Image')
-        result_win.imageIdentifier = Classifier_Window.TRAINING
-        min_circularity = g.myoquant.algorithm_gui.min_circularity_SpinBox.value()
-        max_circularity = g.myoquant.algorithm_gui.max_circularity_SpinBox.value()
-        circularityCheckbox = g.myoquant.algorithm_gui.circularity_CheckBox
-        min_area = g.myoquant.algorithm_gui.min_area_SpinBox.value()
-        max_area = g.myoquant.algorithm_gui.max_area_SpinBox.value()
-        areaCheckbox = g.myoquant.algorithm_gui.area_CheckBox
-        min_convexity = g.myoquant.algorithm_gui.min_convexity_SpinBox.value()
-        max_convexity = g.myoquant.algorithm_gui.max_convexity_SpinBox.value()
-        convexityCheckbox = g.myoquant.algorithm_gui.convexity_CheckBox
-        min_eccentricity = g.myoquant.algorithm_gui.min_eccentricity_SpinBox.value()
-        max_eccentricity = g.myoquant.algorithm_gui.max_eccentricity_SpinBox.value()
-        eccentricityCheckbox = g.myoquant.algorithm_gui.eccentricity_CheckBox
-
-        #Area
-        if areaCheckbox.isChecked():
-            self.roiStates[np.logical_or(X[:, 0] > max_area, X[:,0] < min_area)] = 2
-        #Eccentricity
-        if eccentricityCheckbox.isChecked():
-            self.roiStates[np.logical_or(X[:, 1] > max_circularity, X[:, 1] < min_circularity)] = 2
-        #Convexity
-        if convexityCheckbox.isChecked():
-            self.roiStates[np.logical_or(X[:, 2] > max_convexity, X[:, 2] < min_convexity)] = 2
-        #Circularity
-        if circularityCheckbox.isChecked():
-            self.roiStates[np.logical_or(X[:, 3] > max_eccentricity, X[:, 3] < min_eccentricity)] = 2
-
-        result_win.set_roi_states()
-
-    def select_binary_image(self):
-        print('Binary image selected.')
-        self.classifier_window = Classifier_Window(self.binary_img_selector.window.image, 'Training Image')
-        self.classifier_window.imageIdentifier = Classifier_Window.TRAINING
-        self.roiStates = np.zeros(np.max(self.classifier_window.labeled_img), dtype=np.uint8)
-
-    def select_intensity_image(self):
-        print('Intensity image selected.')
-        self.intensity_img = self.intensity_img_selector.window.image
-        self.labeled_img.set_bg_im()
-
-        self.labeled_img.bg_im_dialog.setWindowTitle("Select an image")
-
-        if self.labeled_img.bg_im_dialog.parent.bg_im is not None:
-            self.labeled_img.bg_im_dialog.parent.imageview.view.removeItem(self.labeled_img.bg_im_dialog.parent.bg_im)
-            self.labeled_img.bg_im_dialog.bg_im = None
-        self.labeled_img.bg_im_dialog.parent.bg_im = pg.ImageItem(self.intensity_img_selector.window.imageview.imageItem.image)
-        self.labeled_img.bg_im_dialog.parent.bg_im.setOpacity(self.labeled_img.bg_im_dialog.alpha_slider.value())
-        self.labeled_img.bg_im_dialog.parent.imageview.view.addItem(self.labeled_img.bg_im_dialog.parent.bg_im)
-
-
-    def select_labeled_image(self):
-        print('Labeled image selected.')
-        self.labeled_img = Classifier_Window(self.labeled_img_selector.window.labeled_img, 'Flourescence Image')
-        self.labeled_img.imageIdentifier = Classifier_Window.FLR
-        self.labeled_img.set_roi_states()
-        self.paintFlrColoredImage()
-
-    def select_dapi_image(self):
-        print('DAPI image selected.')
-        #Reset potentially old data
-        self.dapi_rois = None
-        self.eroded_roi_states = None
-        for i in np.nonzero(self.roiStates == 3)[0]:
-            self.roiStates[i] = 1
-        self.isCNFCalculated = False
-        #Select the image
-        self.dapi_img = Classifier_Window(self.dapi_img_selector.window.image, 'CNF Image')
-        self.dapi_img.imageIdentifier = Classifier_Window.DAPI
-        self.dapi_img.set_roi_states()
-        self.algorithm_gui.run_erosion_button.pressed.connect(self.dapi_img.run_erosion)
-        self.paintDapiColoredImage()
-
-    def select_dapi_labeled_image(self):
-        print('DAPI labeled image selected.')
-        # Reset potentially old data
-        self.dapi_rois = None
-        self.eroded_roi_states = None
-        for i in np.nonzero(self.roiStates == 3)[0]:
-            self.roiStates[i] = 1
-        self.isCNFCalculated = False
-        #Select the image
-        self.dapi_labeled_img = self.labeled_dapi_img_selector.window.image
-        self.dapi_rois = measure.regionprops(self.dapi_labeled_img)
-        #Overlay the DAPI onto the image
-        self.dapi_img.set_bg_im()
-
-        self.dapi_img.bg_im_dialog.setWindowTitle("Select an image")
-
-        if self.dapi_img.bg_im_dialog.parent.bg_im is not None:
-            self.dapi_img.bg_im_dialog.parent.imageview.view.removeItem(self.dapi_img.bg_im_dialog.parent.bg_im)
-            self.dapi_img.bg_im_dialog.bg_im = None
-        self.dapi_img.bg_im_dialog.parent.bg_im = pg.ImageItem(self.labeled_dapi_img_selector.window.imageview.imageItem.image)
-        self.dapi_img.bg_im_dialog.parent.bg_im.setOpacity(self.dapi_img.bg_im_dialog.alpha_slider.value())
-        self.dapi_img.bg_im_dialog.parent.imageview.view.addItem(self.dapi_img.bg_im_dialog.parent.bg_im)
+    def save_dapi(self):
+        print("Saving DAPI Data")
+        if self.isCNFCalculated == False:
+            g.alert("Make sure the CNF has been calculated")
+        else:
+            self.saved_dapi_rois = self.dapi_img.window_props
+            self.saved_dapi_states = np.copy(self.dapi_img.window_states)
 
     def paintDapiColoredImage(self):
         if self.dapi_img is not None:
@@ -565,20 +609,26 @@ class Myoquant():
                     self.dapi_img.colored_img[x, y] = Classifier_Window.YELLOW
             self.dapi_img.update_image(self.dapi_img.colored_img)
 
-    def paintFlrColoredImage(self):
-        if self.labeled_img is not None:
-            self.labeled_img.set_roi_states()
+    def resetDAPIData(self):
+        self.dapi_rois = None
+        self.eroded_roi_states = None
+        self.saved_dapi_rois = None
+        self.saved_dapi_states = None
+        if self.dapi_img is not None:
+            for i in np.nonzero(self.dapi_img.window_states == 3)[0]:
+                self.dapi_img.window_states[i] = 1
+        self.isCNFCalculated = False
 
-    def save_data(self):
+    def print_data(self):
         scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
         resizeFactor = g.myoquant.algorithm_gui.resize_factor_SpinBox.value()
-        #minferetProps = self.calc_min_feret_diameters(self.roiProps)
+        minferetProps = self.calc_min_feret_diameters(self.classifier_window.window_props)
 
         # Set up the multi-dimensional array to store all of the data
         dataArray = [['ROI #'], ['Area'], ['Minferet'], ['MFI'], ['CNF']]
 
         count = 0
-        for prop in self.roiProps:
+        for prop in self.classifier_window.window_props:
             #Green States
             if self.roiStates[count] == 1 or self.roiStates[count] == 3:
                 # ROI Number
@@ -590,15 +640,23 @@ class Myoquant():
                 dataArray[1].append(area)
 
                 # MinFeret
-                #minferet = minferetProps[count] * (scaleFactor / resizeFactor)
-                #dataArray[2].append(minferet)
+                minferet = minferetProps[count] * (scaleFactor / resizeFactor)
+                dataArray[2].append(minferet)
 
                 #MFI
+                if self.isIntensityCalculated:
+                    subtractionValue = g.myoquant.algorithm_gui.flourescence_subtraction_SpinBox.value()
+                    measuredIntensity = self.flourescenceIntensities[count]
+                    intensity = 0
 
+                    if measuredIntensity > subtractionValue:
+                        intensity = measuredIntensity - subtractionValue
+
+                    dataArray[3].append(intensity)
 
                 #CNF - Purple States
                 if self.isCNFCalculated:
-                    if self.roiStates[count] == 3:
+                    if self.saved_dapi_states[count] == 3:
                         dataArray[4].append("1")
                     else:
                         dataArray[4].append("0")
@@ -606,7 +664,6 @@ class Myoquant():
             count += 1
 
         fileSaveAsName = save_file_gui('Save file as...', filetypes='*.xlsx')
-        print(fileSaveAsName)
         workbook = xlsxwriter.Workbook(fileSaveAsName)
         worksheet = workbook.add_worksheet()
         worksheet.write_column('A1',dataArray[0])
@@ -626,6 +683,12 @@ class Myoquant():
                 min_feret_diameters.append(1)
             elif min(roi.convex_image.shape) == 2:
                 min_feret_diameters.append(2)
+            elif min(roi.convex_image.shape) == 3:
+                min_feret_diameters.append(3)
+            elif min(roi.convex_image.shape) == 4:
+                min_feret_diameters.append(4)
+            elif min(roi.convex_image.shape) == 5:
+                min_feret_diameters.append(5)
             else:
                 identity_convex_hull = roi.convex_image
                 coordinates = np.vstack(find_contours(identity_convex_hull, 0.5, fully_connected='high'))
@@ -639,93 +702,71 @@ class Myoquant():
         min_feret_diameters = np.array(min_feret_diameters)
         return min_feret_diameters
 
-    # def save_fiber_data(self):
-    #     scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
-    #     resizeFactor = g.myoquant.algorithm_gui.resize_factor_SpinBox.value()
-    #     if not isinstance(g.win, Classifier_Window):
-    #         g.alert('Make sure the window containing the data you are trying to export is selected (highlighted in green).')
-    #         return
-    #     X = g.win.get_extended_features_array()
-    #     X = X[g.win.roi_states == 1]
-    #     X[:, 1] /= (scaleFactor**2 * resizeFactor**2) # area
-    #     X[:, 2] *= scaleFactor / resizeFactor  # Minferet
-    #     fileSaveAsName = save_file_gui('Save file as...', filetypes='.xlsx')
-    #     workbook = xlsxwriter.Workbook(fileSaveAsName)
-    #     worksheet = workbook.add_worksheet()
-    #     header = ['ROI #','Area', 'Minferet','MFI']
-    #     # header = ['Area', 'Eccentricity', 'Convexity', 'Circularity', 'ROI #', 'Minferet','MFI']
-    #     worksheet.write_row(0, 0, header)
-    #     for row_idx, row_data in enumerate(X):
-    #         worksheet.write_row(row_idx + 1, 0, row_data)
-    #     workbook.close()
-
-    # def master_save(self):
-    #     scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
-    #     resizeFactor = g.myoquant.algorithm_gui.resize_factor_SpinBox.value()
-    #     if not isinstance(g.win, Classifier_Window):
-    #         g.alert(
-    #             'Make sure the window containing the data you are trying to export is selected (highlighted in green).')
-    #         return
-    #     X = g.win.get_extended_features_array()
-    #     X = X[np.logical_or(g.win.roi_states == 1, g.win.roi_states == 3)]
-    #     exported_rois = np.compress(np.logical_or(g.win.roi_states == 1, g.win.roi_states == 3), g.win.roi_states * 1)
-    #     exported_rois.shape = (len(X), 1)
-    #
-    #     X = np.concatenate((X, exported_rois), axis=1)
-    #
-    #
-    #
-    #
-    #
-    #     X[:, 0] /= (scaleFactor ** 2 * resizeFactor ** 2)  # area
-    #     X[:, 5] *= scaleFactor / resizeFactor  # Minferet
-    #
-    #     fileSaveAsName = save_file_gui('Save file as...', filetypes='.xlsx')
-    #     workbook = xlsxwriter.Workbook(fileSaveAsName)
-    #     worksheet = workbook.add_worksheet()
-    #     header = ['Area', 'Eccentricity', 'Convexity', 'Circularity', 'ROI #', 'Minferet','Yellow' , Overlay Intensity']
-    #     worksheet.write_row(0, 0, header)
-    #     for row_idx, row_data in enumerate(X):
-    #         worksheet.write_row(row_idx + 1, 0, row_data)
-    #     workbook.close()
-
-    # def save_flr(self):
-    #     if self.intensity_img is None:
-    #         g.alert('Make sure an intensity image is selected')
-    #     if self.labeled_img is None:
-    #         g.alert('Make sure a classified, labeled image is selected')
-    #     Y = measure.regionprops(self.labeled_img, self.intensity_img)
-    #     rois = np.max(self.labeled_img)
-    #     roi_num = np.arange(rois)
-    #     intensity = np.array([p.mean_intensity for p in Y])
-    #     X = np.stack((roi_num,intensity),1)
-    #     X = X[self.roiStates == 1]
-    #     fileSaveAsName = save_file_gui('Save file as...', filetypes='.xlsx')
-    #     workbook = xlsxwriter.Workbook(fileSaveAsName)
-    #     worksheet = workbook.add_worksheet()
-    #     header = ['ROI #','Overlay Intensity']
-    #     worksheet.write_row(0, 0, header)
-    #     for row_idx, row_data in enumerate(X):
-    #         worksheet.write_row(row_idx + 1, 0, row_data)
-    #     workbook.close()
+    # def resetAllData(self):
+    #     if self.classifier_window is not None:
+    #         answer = QtWidgets.QMessageBox.question(self.algorithm_gui,
+    #                                                 "Message",
+    #                                                 "This will clear all image data, do you want to continue?",
+    #                                                 buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+    #                                                 defaultButton=QtWidgets.QMessageBox.No)
+    #         if answer == QtWidgets.QMessageBox.Yes:
+    #             print("Clearing all Image Data")
+    #             if self.classifier_window is not None:
+    #                 self.classifier_window.close()
+    #                 self.classifier_window = None
+    #             if self.trained_img is not None:
+    #                 self.trained_img.close()
+    #                 self.trained_img = None
+    #             if self.filtered_trained_img is not None:
+    #                 self.filtered_trained_img.close()
+    #                 self.filtered_trained_img = None
+    #             if self.dapi_img is not None:
+    #                 self.dapi_img.close()
+    #                 self.dapi_img = None
+    #             if self.dapi_binarized_img is not None:
+    #                 self.dapi_binarized_img.close()
+    #                 self.dapi_binarized_img = None
+    #             if self.eroded_labeled_img is not None:
+    #                 self.eroded_labeled_img.close()
+    #                 self.eroded_labeled_img = None
+    #             if self.flourescence_img is not None:
+    #                 self.flourescence_img.close()
+    #                 self.flourescence_img = None
+    #             if self.intensity_img is not None:
+    #                 self.intensity_img.close()
+    #                 self.intensity_img = None
+    #             # ROIs and States
+    #             self.roiStates = None
+    #             self.eroded_roi_states = None
+    #             self.dapi_rois = None
+    #             self.roiProps = None
+    #             self.flourescenceIntensities = None
+    #             # Printing Data
+    #             self.saved_flourescence_rois = None
+    #             self.saved_flourescence_states = None
+    #             self.saved_dapi_rois = None
+    #             self.saved_dapi_states = None
+    #             # Misc
+    #             self.isCNFCalculated = False
+    #             self.isIntensityCalculated = False
 
 myoquant = Myoquant()
 g.myoquant = myoquant
 
 
-def testing():
-    from plugins.myoquant.marking_binary_window import Classifier_Window
-    original = open_file(r'C:\Users\kyle\Desktop\tmp.tif')
-    binary_tmp = open_file(r'C:\Users\kyle\Desktop\binary.tif')
-    binary = Classifier_Window(binary_tmp.image, 'Classifier Window')
-    close(binary_tmp)
-    binary.load_classifications(r'C:\Users\kyle\Desktop\classifications.json')
-
-
-if __name__ == '__main__':
-    original = open_file(r'C:\Users\kyle\Dropbox\Software\2017 Jennas cell counting\mdx_224_Laminin.tif')
-    split_channels()
-    crop
-    original = resize(2)
-    g.myoquant.gui()
+# def testing():
+#     from plugins.myoquant.marking_binary_window import Classifier_Window
+#     original = open_file(r'C:\Users\kyle\Desktop\tmp.tif')
+#     binary_tmp = open_file(r'C:\Users\kyle\Desktop\binary.tif')
+#     binary = Classifier_Window(binary_tmp.image, 'Classifier Window')
+#     close(binary_tmp)
+#     binary.load_classifications(r'C:\Users\kyle\Desktop\classifications.json')
+#
+#
+# if __name__ == '__main__':
+#     original = open_file(r'C:\Users\kyle\Dropbox\Software\2017 Jennas cell counting\mdx_224_Laminin.tif')
+#     split_channels()
+#     crop
+#     original = resize(2)
+#     g.myoquant.gui()
 
