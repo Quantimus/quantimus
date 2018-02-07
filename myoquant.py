@@ -4,9 +4,10 @@ from distutils.version import StrictVersion
 import xlsxwriter
 from skimage.filters import gabor_kernel
 from scipy.signal import convolve2d
-from qtpy import uic
+from qtpy import uic, QtGui
 from skimage.morphology import binary_dilation
 from itertools import chain
+from sklearn import svm
 import pyqtgraph as pg
 import math
 import flika
@@ -132,6 +133,7 @@ def get_new_I(I, thresh1=.20, thresh2=.30):
     #  The maximum of the labeled image is the number of contiguous regions, or ROIs.
     nROIs = np.max(label_im_1)
     for roi_num in np.arange(nROIs):
+        QtWidgets.QApplication.processEvents()
         prop1 = props_1[roi_num]
         x, y = prop1.coords[0,:]
         prop2 = props_2[label_im_2[x, y] - 1]
@@ -150,11 +152,17 @@ class Myoquant():
     Muscle Cell Analysis Software
     """
 
+    MARKERS = "MARKERS"
+    BINARY = "BINARY"
+
     def __init__(self):
         pass
 
     def gui(self):
         #Windows
+        self.markers_win = None
+        self.filled_boundaries_win = None
+        self.binary_img = None
         self.classifier_window = None
         self.trained_img = None
         self.filtered_trained_img = None
@@ -178,6 +186,8 @@ class Myoquant():
         self.saved_dapi_states = None
 
         # Misc
+        self.isMarkersFirstSelection = True
+        self.isBinaryFirstSelection = True
         self.isCNFCalculated = False
         self.isIntensityCalculated = False
 
@@ -269,27 +279,30 @@ class Myoquant():
         if self.original_window_selector.window is None:
             g.alert('You must select a Window before creating the markers window.')
         else:
-            win = self.original_window_selector.window
-            needAlert = False
-            if np.max(win.image) > 1:
-                needAlert = True
-                I = win.image.astype(np.float)
-                I -= np.min(I)
-                I /= np.max(I)
-                win.image = I
-                win.dtype = I.dtype
-                win.imageview.setImage(win.image)
-                win._init_dimensions(win.image)
-                win.imageview.ui.graphicsView.addItem(win.top_left_label)
-            original = win.image
-            self.markers_win = Window(np.zeros_like(original, dtype=np.uint8), 'Binary Markers')
-            self.markers_win.imageview.setLevels(-.1, 2.1)
-            self.threshold1_slider.setRange(np.min(original), np.max(original))
-            self.threshold2_slider.setRange(np.min(original), np.max(original))
-            self.threshold_slider_changed()
-            fname = self.original_window_selector.value().filename
-            if needAlert:
-                g.alert("The window you select must have values between 0 and 1. Scaling the window now.")
+            if self.resetData(Myoquant.MARKERS):
+                win = self.original_window_selector.window
+                needAlert = False
+                if np.max(win.image) > 1:
+                    needAlert = True
+                    I = win.image.astype(np.float)
+                    I -= np.min(I)
+                    I /= np.max(I)
+                    win.image = I
+                    win.dtype = I.dtype
+                    win.imageview.setImage(win.image)
+                    win._init_dimensions(win.image)
+                    win.imageview.ui.graphicsView.addItem(win.top_left_label)
+                original = win.image
+                self.markers_win = Window(np.zeros_like(original, dtype=np.uint8), 'Binary Markers')
+                self.markers_win.imageview.setLevels(0, 2)
+                self.markers_win.imageview.ui.histogram.gradient.addTick(0, QtGui.QColor(0,0,255), True)
+                self.markers_win.imageview.ui.histogram.gradient.setTickValue(1, .50)
+                self.threshold1_slider.setRange(np.min(original), np.max(original))
+                self.threshold2_slider.setRange(np.min(original), np.max(original))
+                self.threshold_slider_changed()
+                if needAlert:
+                    g.alert("The window you select must have values between 0 and 1. Scaling the window now.")
+                self.isMarkersFirstSelection = False
 
     def threshold_slider_changed(self):
         if self.original_window_selector.window is None:
@@ -304,19 +317,22 @@ class Myoquant():
 
     def fill_boundaries_button(self):
         #Reset any data currently saved in the system
-        #self.resetAllData()
-
         lower_bound = self.threshold1_slider.value()
         upper_bound = self.threshold2_slider.value()
         thresholds = np.linspace(lower_bound, upper_bound, 8)
         I = self.original_window_selector.window.image
         I_new = I
+
+        progress = self.createProgressBar()
+        progress.show()
+
         for i in np.arange(len(thresholds) - 1):
+            QtWidgets.QApplication.processEvents()
             print(thresholds[i])
             I_new = get_new_I(I_new, thresholds[i], thresholds[i + 1])
         self.filled_boundaries_win = Window(I_new, 'Filled Boundaries')
         classifier_image = remove_borders(I_new < upper_bound)
-        self.classifier_window = Classifier_Window(classifier_image, 'Binary Window')
+        self.binary_img = Classifier_Window(classifier_image, 'Binary Window')
 
     def get_norm_coeffs(self, X):
         mean = np.mean(X, 0)
@@ -328,24 +344,32 @@ class Myoquant():
         X = X / (2 * std)
         return X
 
-    def cleanupWindowData(self):
-        print('Cleaning up window data')
-
     def closeEvent(self, event):
         print('Closing myoquant gui')
         if self.classifier_window is not None:
             self.classifier_window.close()
         event.accept() # let the window close
 
+    def createProgressBar(self):
+        progress = QtWidgets.QProgressDialog()
+        progress.parent = self
+        progress.setLabelText("Please wait while image processes")
+        progress.setRange(0, 0)
+        progress.setMinimumWidth(400)
+        progress.setMinimumHeight(100)
+        progress.setCancelButton(None)
+        progress.setModal(True)
+        return progress
+
     def select_binary_image(self):
         # Reset any data currently saved in the system
-        #self.resetAllData()
-
-        print('Binary image selected.')
-        self.classifier_window = Classifier_Window(self.binary_img_selector.window.image, 'Training Image')
-        self.classifier_window.imageIdentifier = Classifier_Window.TRAINING
-        self.roiStates = np.zeros(np.max(self.classifier_window.labeled_img), dtype=np.uint8)
-        self.classifier_window.window_states = np.copy(self.roiStates)
+        if self.resetData(Myoquant.BINARY):
+            print('Binary image selected.')
+            self.classifier_window = Classifier_Window(self.binary_img_selector.window.image, 'Training Image')
+            self.classifier_window.imageIdentifier = Classifier_Window.TRAINING
+            self.roiStates = np.zeros(np.max(self.classifier_window.labeled_img), dtype=np.uint8)
+            self.classifier_window.window_states = np.copy(self.roiStates)
+            self.isBinaryFirstSelection = False
 
     def run_SVM_classification_on_image(self):
         X_train, y_train = self.classifier_window.get_training_data()
@@ -366,7 +390,6 @@ class Myoquant():
     def run_SVM_classification_general(self, X_train, y_train, mu, sigma):
         print('Running SVM classification')
         try:
-            from sklearn import svm
             X_train = self.normalize_data(X_train, mu, sigma)
             clf = svm.SVC()
             clf.fit(X_train, y_train)
@@ -419,7 +442,11 @@ class Myoquant():
             states = np.copy(self.trained_img.window_states)
             count = 0
 
+            progress = self.createProgressBar()
+            progress.show()
+
             for feature in features:
+                QtWidgets.QApplication.processEvents()
                 if self.trained_img.window_states[count] == 1:
                     #Area
                     if areaCheckbox.isChecked():
@@ -622,13 +649,13 @@ class Myoquant():
     def print_data(self):
         scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
         resizeFactor = g.myoquant.algorithm_gui.resize_factor_SpinBox.value()
-        minferetProps = self.calc_min_feret_diameters(self.classifier_window.window_props)
+        minferetProps = self.calc_min_feret_diameters(self.trained_img.window_props)
 
         # Set up the multi-dimensional array to store all of the data
         dataArray = [['ROI #'], ['Area'], ['Minferet'], ['MFI'], ['CNF']]
 
         count = 0
-        for prop in self.classifier_window.window_props:
+        for prop in self.trained_img.window_props:
             #Green States
             if self.roiStates[count] == 1 or self.roiStates[count] == 3:
                 # ROI Number
@@ -702,53 +729,102 @@ class Myoquant():
         min_feret_diameters = np.array(min_feret_diameters)
         return min_feret_diameters
 
-    # def resetAllData(self):
-    #     if self.classifier_window is not None:
-    #         answer = QtWidgets.QMessageBox.question(self.algorithm_gui,
-    #                                                 "Message",
-    #                                                 "This will clear all image data, do you want to continue?",
-    #                                                 buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-    #                                                 defaultButton=QtWidgets.QMessageBox.No)
-    #         if answer == QtWidgets.QMessageBox.Yes:
-    #             print("Clearing all Image Data")
-    #             if self.classifier_window is not None:
-    #                 self.classifier_window.close()
-    #                 self.classifier_window = None
-    #             if self.trained_img is not None:
-    #                 self.trained_img.close()
-    #                 self.trained_img = None
-    #             if self.filtered_trained_img is not None:
-    #                 self.filtered_trained_img.close()
-    #                 self.filtered_trained_img = None
-    #             if self.dapi_img is not None:
-    #                 self.dapi_img.close()
-    #                 self.dapi_img = None
-    #             if self.dapi_binarized_img is not None:
-    #                 self.dapi_binarized_img.close()
-    #                 self.dapi_binarized_img = None
-    #             if self.eroded_labeled_img is not None:
-    #                 self.eroded_labeled_img.close()
-    #                 self.eroded_labeled_img = None
-    #             if self.flourescence_img is not None:
-    #                 self.flourescence_img.close()
-    #                 self.flourescence_img = None
-    #             if self.intensity_img is not None:
-    #                 self.intensity_img.close()
-    #                 self.intensity_img = None
-    #             # ROIs and States
-    #             self.roiStates = None
-    #             self.eroded_roi_states = None
-    #             self.dapi_rois = None
-    #             self.roiProps = None
-    #             self.flourescenceIntensities = None
-    #             # Printing Data
-    #             self.saved_flourescence_rois = None
-    #             self.saved_flourescence_states = None
-    #             self.saved_dapi_rois = None
-    #             self.saved_dapi_states = None
-    #             # Misc
-    #             self.isCNFCalculated = False
-    #             self.isIntensityCalculated = False
+    def resetData(self, originatingWindow):
+        reset = False
+        if originatingWindow == Myoquant.MARKERS:
+            print("Markers")
+            if self.isMarkersFirstSelection:
+                self.resetAllData()
+                if self.markers_win is not None:
+                    self.markers_win.close()
+                    self.markers_win = None
+                if self.filled_boundaries_win is not None:
+                    self.filled_boundaries_win.close()
+                    self.filled_boundaries_win = None
+                if self.classifier_window is not None:
+                    self.classifier_window.close()
+                    self.classifier_window = None
+                if self.binary_img is not None:
+                    self.binary_img.close()
+                    self.binary_img = None
+                self.isBinaryFirstSelection = True
+                reset = True
+            elif not self.isMarkersFirstSelection:
+                if self.resetQuestion() == QtWidgets.QMessageBox.Yes:
+                    self.resetAllData()
+                    if self.markers_win is not None:
+                        self.markers_win.close()
+                        self.markers_win = None
+                    if self.filled_boundaries_win is not None:
+                        self.filled_boundaries_win.close()
+                        self.filled_boundaries_win = None
+                    if self.classifier_window is not None:
+                        self.classifier_window.close()
+                        self.classifier_window = None
+                    if self.binary_img is not None:
+                        self.binary_img.close()
+                        self.binary_img = None
+                    self.isBinaryFirstSelection = True
+                    reset = True
+        elif originatingWindow == Myoquant.BINARY:
+            print("Binary")
+            if self.isBinaryFirstSelection:
+                self.resetAllData()
+                reset = True
+            elif not self.isBinaryFirstSelection:
+                if self.resetQuestion() == QtWidgets.QMessageBox.Yes:
+                    self.resetAllData()
+                    if self.classifier_window is not None:
+                        self.classifier_window.close()
+                        self.classifier_window = None
+                    reset = True
+        else:
+            self.resetAllData()
+            reset = True
+        return reset
+
+    def resetAllData(self):
+        if self.trained_img is not None:
+            self.trained_img.close()
+            self.trained_img = None
+        if self.filtered_trained_img is not None:
+            self.filtered_trained_img.close()
+            self.filtered_trained_img = None
+        if self.dapi_img is not None:
+            self.dapi_img.close()
+            self.dapi_img = None
+        if self.flourescence_img is not None:
+            self.flourescence_img.close()
+            self.flourescence_img = None
+        if self.intensity_img is not None:
+            self.intensity_img = None
+        if self.dapi_binarized_img is not None:
+            self.dapi_binarized_img = None
+        if self.eroded_labeled_img is not None:
+            self.eroded_labeled_img = None
+
+        # ROIs and States
+        self.roiStates = None
+        self.eroded_roi_states = None
+        self.dapi_rois = None
+        self.roiProps = None
+        self.flourescenceIntensities = None
+        # Printing Data
+        self.saved_flourescence_rois = None
+        self.saved_flourescence_states = None
+        self.saved_dapi_rois = None
+        self.saved_dapi_states = None
+        # Misc
+        self.isCNFCalculated = False
+        self.isIntensityCalculated = False
+
+    def resetQuestion(self):
+        return QtWidgets.QMessageBox.question(
+            self.algorithm_gui,
+            "Message",
+            "This will clear all image data, do you want to continue?",
+            buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            defaultButton=QtWidgets.QMessageBox.No)
 
 myoquant = Myoquant()
 g.myoquant = myoquant

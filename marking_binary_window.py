@@ -120,9 +120,10 @@ class Classifier_Window(Window):
     def trainingMouseClickEvent(self, roi_num):
         old_state = self.window_states[roi_num]
         new_state = (old_state + 1) % 3
-        #Skip White. There is no need to have White when training
-        if new_state == 0:
-            new_state = new_state + 1
+        #Skip White. There is no need to have White when training. -I changed this backt to normal because sometimes the identity of fibers are not clear
+
+        #if new_state == 0:
+        #    new_state = new_state + 1
         color = [Classifier_Window.WHITE, Classifier_Window.GREEN, Classifier_Window.RED][new_state]
         return color, new_state
 

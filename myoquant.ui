@@ -19,7 +19,15 @@
   <property name="windowTitle">
    <string>Flika - Myoquant Plugin</string>
   </property>
-  <widget class="QWidget" name="">
+  <widget class="QWidget" name="layoutWidget">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>981</width>
+     <height>658</height>
+    </rect>
+   </property>
    <layout class="QHBoxLayout" name="horizontalLayout">
     <property name="sizeConstraint">
      <enum>QLayout::SetDefaultConstraint</enum>
