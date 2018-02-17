@@ -11,6 +11,8 @@ from sklearn import svm
 import pyqtgraph as pg
 import math
 import flika
+import threading
+import time
 
 from .marking_binary_window import *
 
@@ -323,7 +325,7 @@ class Myoquant():
         I = self.original_window_selector.window.image
         I_new = I
 
-        progress = self.createProgressBar()
+        progress = self.createProgressBar('Please wait while image is processed...')
         progress.show()
 
         for i in np.arange(len(thresholds) - 1):
@@ -350,19 +352,19 @@ class Myoquant():
             self.classifier_window.close()
         event.accept() # let the window close
 
-    def createProgressBar(self):
+    def createProgressBar(self, msg):
         progress = QtWidgets.QProgressDialog()
         progress.parent = self
-        progress.setLabelText("Please wait while image processes")
+        progress.setLabelText(msg)
         progress.setRange(0, 0)
-        progress.setMinimumWidth(400)
+        progress.setMinimumWidth(375)
         progress.setMinimumHeight(100)
         progress.setCancelButton(None)
         progress.setModal(True)
         return progress
 
     def select_binary_image(self):
-        # Reset any data currently saved in the system
+        #Reset any data currently saved in the system
         if self.resetData(Myoquant.BINARY):
             print('Binary image selected.')
             self.classifier_window = Classifier_Window(self.binary_img_selector.window.image, 'Training Image')
@@ -372,20 +374,37 @@ class Myoquant():
             self.isBinaryFirstSelection = False
 
     def run_SVM_classification_on_image(self):
-        X_train, y_train = self.classifier_window.get_training_data()
-        mu, sigma = self.get_norm_coeffs(self.classifier_window.features_array)
-        self.run_SVM_classification_general(X_train, y_train, mu, sigma)
+        if self.classifier_window is None:
+            g.alert("Please select a Binary Image")
+        else:
+            #Start threading and Progress Bar
+            progress = g.myoquant.createProgressBar('Please wait while fibers are being classified...')
+            progress.show()
+            QtWidgets.QApplication.processEvents()
+
+            X_train, y_train = self.classifier_window.get_training_data()
+            mu, sigma = self.get_norm_coeffs(self.classifier_window.features_array)
+            self.run_SVM_classification_general(X_train, y_train, mu, sigma)
 
     def run_SVM_classification_on_saved_training_data(self):
-        filename = open_file_gui("Open training_data", filetypes='*.json')
-        if filename is None:
-            return None
-        obj_text = codecs.open(filename, 'r', encoding='utf-8').read()
-        data = json.loads(obj_text)
-        X_train = np.array(data['features'])
-        y_train = np.array(data['states'])
-        mu, sigma = self.get_norm_coeffs(X_train)
-        self.run_SVM_classification_general(X_train, y_train, mu, sigma)
+        if self.classifier_window is None:
+            g.alert("Please select a Binary Image")
+        else:
+            filename = open_file_gui("Open training_data", filetypes='*.json')
+            if filename is None:
+                return None
+            obj_text = codecs.open(filename, 'r', encoding='utf-8').read()
+            data = json.loads(obj_text)
+
+            # Start threading and Progress Bar
+            progress = self.createProgressBar('Please wait while fibers are being classified...')
+            progress.show()
+            QtWidgets.QApplication.processEvents()
+
+            X_train = np.array(data['features'])
+            y_train = np.array(data['states'])
+            mu, sigma = self.get_norm_coeffs(X_train)
+            self.run_SVM_classification_general(X_train, y_train, mu, sigma)
 
     def run_SVM_classification_general(self, X_train, y_train, mu, sigma):
         print('Running SVM classification')
@@ -424,6 +443,10 @@ class Myoquant():
 
     def filter_update(self):
         print('Manually filtering...')
+
+        progress = self.createProgressBar('Please wait while image is filtered...')
+        progress.show()
+
         try:
             min_circularity = g.myoquant.algorithm_gui.min_circularity_SpinBox.value()
             max_circularity = g.myoquant.algorithm_gui.max_circularity_SpinBox.value()
@@ -442,10 +465,9 @@ class Myoquant():
             states = np.copy(self.trained_img.window_states)
             count = 0
 
-            progress = self.createProgressBar()
-            progress.show()
 
             for feature in features:
+                #Update the progress bar so it shows movement
                 QtWidgets.QApplication.processEvents()
                 if self.trained_img.window_states[count] == 1:
                     #Area
@@ -514,6 +536,11 @@ class Myoquant():
 
     def calculate_flourescence(self):
         print('Calculating Flourescence Intensity')
+
+        progress = self.createProgressBar('Please wait while fluorescence intensity is being calculated...')
+        progress.show()
+        QtWidgets.QApplication.processEvents()
+
         if self.flourescence_img is None:
             g.alert('Make sure a Flourescence image is selected')
         elif self.intensity_img is None:
@@ -527,6 +554,11 @@ class Myoquant():
 
     def save_flourescence(self):
         print("Saving Flourescence Data")
+
+        progress = self.createProgressBar('Please wait while fluorescence intensity is being saved...')
+        progress.show()
+        QtWidgets.QApplication.processEvents()
+
         if self.isIntensityCalculated == False:
             g.alert("Make sure the Flourescence Intensity has been calculated")
         else:
@@ -577,6 +609,11 @@ class Myoquant():
 
     def calculate_dapi(self):
         print('Calculating DAPI')
+
+        progress = self.createProgressBar('Please wait while CNF is being calculated...')
+        progress.show()
+        QtWidgets.QApplication.processEvents()
+
         if self.dapi_img is None:
             g.alert('Make sure a DAPI image is selected')
         elif self.dapi_binarized_img is None:
@@ -619,6 +656,11 @@ class Myoquant():
 
     def save_dapi(self):
         print("Saving DAPI Data")
+
+        progress = self.createProgressBar('Please wait while CNF data is being saved...')
+        progress.show()
+        QtWidgets.QApplication.processEvents()
+
         if self.isCNFCalculated == False:
             g.alert("Make sure the CNF has been calculated")
         else:
@@ -647,6 +689,10 @@ class Myoquant():
         self.isCNFCalculated = False
 
     def print_data(self):
+
+        progress = self.createProgressBar('Please wait while data is printed...')
+        progress.show()
+
         scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
         resizeFactor = g.myoquant.algorithm_gui.resize_factor_SpinBox.value()
         minferetProps = self.calc_min_feret_diameters(self.trained_img.window_props)
@@ -656,6 +702,8 @@ class Myoquant():
 
         count = 0
         for prop in self.trained_img.window_props:
+            QtWidgets.QApplication.processEvents()
+
             #Green States
             if self.roiStates[count] == 1 or self.roiStates[count] == 3:
                 # ROI Number
@@ -698,6 +746,13 @@ class Myoquant():
         worksheet.write_column('C1',dataArray[2])
         worksheet.write_column('D1',dataArray[3])
         worksheet.write_column('E1',dataArray[4])
+
+        worksheet.write('F1', 'Scale Factor (microns/pixel)')
+        worksheet.write('F2', scaleFactor)
+        worksheet.write('G1', 'Resize Factor')
+        worksheet.write('G2', resizeFactor)
+
+        #worksheet.write_column('E1', dataArray[4])
         workbook.close()
 
     def calc_min_feret_diameters(self, props):
@@ -706,6 +761,10 @@ class Myoquant():
         thetas = np.arange(0, np.pi / 2, .01)
         Rs = [rotation_matrix(theta) for theta in thetas]
         for roi in props:
+
+            #Update the progress bar so it shows movement
+            QtWidgets.QApplication.processEvents()
+
             if min(roi.convex_image.shape) == 1:
                 min_feret_diameters.append(1)
             elif min(roi.convex_image.shape) == 2:

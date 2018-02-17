@@ -4,6 +4,7 @@ from flika import global_vars as g
 from skimage import measure
 from skimage import morphology
 from skimage.measure import label, find_contours
+from skimage.morphology import diamond
 from qtpy import QtWidgets, QtCore
 import numpy as np
 import json, codecs
@@ -260,6 +261,10 @@ class Classifier_Window(Window):
         self.update_image(self.colored_img)
 
     def run_erosion(self):
+
+        progress = g.myoquant.createProgressBar('Please wait while fibers are being eroded...')
+        progress.show()
+
         # Reset potentially old values=
         self.eroded_roi_states = None
         for i in np.nonzero(self.window_states == 3)[0]:
@@ -268,45 +273,48 @@ class Classifier_Window(Window):
         #Set all values in eroded_labeled_img to 0
         #The appropriate coordinates will be marked as 1 later
         self.eroded_labeled_img[:len(self.eroded_labeled_img - 1)] = 0
+
         for i in np.nonzero(self.window_states == 1)[0]:
+            QtWidgets.QApplication.processEvents()
+
             # Reset the ROIs to green
             x, y = self.window_props[i].coords.T
             self.colored_img[x, y] = Classifier_Window.GREEN
 
             individualProp = self.window_props[i]
-
             targetSize = (100 - g.myoquant.algorithm_gui.erosion_percentage_SpinBox.value()) * .01
             targetArea = individualProp.area * targetSize
 
-            if (targetArea > 10):
-                while individualProp.area > targetArea:
-                    label_im_1 = label(morphology.binary_erosion(individualProp.image, selem=None), connectivity=2)
-                    newProps = measure.regionprops(label_im_1)
+            if targetArea > 10:
+                image = individualProp.image
+                while True:
+                    # Get the size of the array
+                    arrayRows = len(image)
+                    arrayCols = len(image[0])
+                    arraySize = arrayRows*arrayCols
+                    # Count the number of 'false' in the array
+                    arrayFalseCount = (image == False).sum()
+                    # Subtract the two to get the positive area
+                    erodedArea = arraySize - arrayFalseCount
 
-                    if (len(newProps) > 0):
-                        tempProp = newProps[0]
+                    if erodedArea > targetArea:
+                        image = morphology.binary_erosion(image, selem=diamond(1))
                     else:
-                        break
+                        break;
 
-                    if (tempProp.area > 5):
-                        individualProp = tempProp
-                    else:
-                        break
+                #Get the coordinate for the pixel at the upper left of the bbox for the original ROI Prop image
+                originalX = individualProp.bbox[0]
+                originalY = individualProp.bbox[1]
+                erodedX = []
+                erodedY = []
 
-                #Calculate the difference between the original bbox and the new bbox
-                originalX, originalY = self.window_props[i].centroid
-                newX, newY = individualProp.centroid
-                differenceX = newX - originalX
-                differenceY = newY - originalY
+                for i in range(len(image)):
+                    for j in range(len(image[i])):
+                        if image[i][j] == True:
+                            erodedX.append(i + originalX)
+                            erodedY.append(j + originalY)
 
-                x, y = individualProp.coords.T
-
-                #Updated each coordinate with an adjusted value, accounting for the difference
-                for i in range(len(x)):
-                    x[i] = x[i] + (-1 * differenceX)
-                for i in range(len(y)):
-                    y[i] = y[i] + (-1 * differenceY)
-                self.eroded_labeled_img[x, y] = 1
+                self.eroded_labeled_img[erodedX, erodedY] = 1
 
         eroded_label = label(self.eroded_labeled_img, connectivity=2)
         g.myoquant.eroded_roi_states = measure.regionprops(eroded_label)
