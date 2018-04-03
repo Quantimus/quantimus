@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1055</width>
+    <width>1335</width>
     <height>438</height>
    </rect>
   </property>
@@ -24,7 +24,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1054</width>
+     <width>1316</width>
      <height>658</height>
     </rect>
    </property>
@@ -120,7 +120,8 @@
            <item row="0" column="0">
             <widget class="QLabel" name="label_4">
              <property name="text">
-              <string>Set regions that are true myofibers to black. Set myofiber boundaries to white.</string>
+              <string>Set regions that are true myofibers to black. Set myofiber boundaries to white. Using the blue threshold will create boundaries if a fiber is successfully connected; 
+ use it to correct conjoined fibers and poorly distinguished boundaries.</string>
              </property>
             </widget>
            </item>
@@ -132,7 +133,7 @@
              <item row="1" column="0">
               <widget class="QLabel" name="label">
                <property name="text">
-                <string>Threshold 1</string>
+                <string>Blue Threshold</string>
                </property>
               </widget>
              </item>
@@ -142,7 +143,7 @@
              <item row="2" column="0">
               <widget class="QLabel" name="label_3">
                <property name="text">
-                <string>Threshold 2</string>
+                <string>White Threshold</string>
                </property>
               </widget>
              </item>
@@ -352,7 +353,7 @@
             <double>0.010000000000000</double>
            </property>
            <property name="value">
-            <double>0.980000000000000</double>
+            <double>1.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -430,10 +431,10 @@
             <number>4</number>
            </property>
            <property name="maximum">
-            <double>10000.000000000000000</double>
+            <double>100000.000000000000000</double>
            </property>
            <property name="value">
-            <double>4000.000000000000000</double>
+            <double>100000.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -573,7 +574,7 @@
             <string/>
            </property>
            <property name="checked">
-            <bool>true</bool>
+            <bool>false</bool>
            </property>
            <property name="tristate">
             <bool>false</bool>
@@ -586,7 +587,7 @@
             <string/>
            </property>
            <property name="checked">
-            <bool>true</bool>
+            <bool>false</bool>
            </property>
           </widget>
          </item>
@@ -596,7 +597,7 @@
             <string/>
            </property>
            <property name="checked">
-            <bool>true</bool>
+            <bool>false</bool>
            </property>
           </widget>
          </item>
@@ -606,7 +607,7 @@
             <string/>
            </property>
            <property name="checked">
-            <bool>true</bool>
+            <bool>false</bool>
            </property>
           </widget>
          </item>
@@ -855,7 +856,7 @@
          <number>0</number>
         </property>
         <property name="value">
-         <number>60</number>
+         <number>80</number>
         </property>
        </widget>
        <widget class="QLabel" name="label_48">
@@ -1100,7 +1101,7 @@
             <bool>false</bool>
            </property>
            <property name="decimals">
-            <number>3</number>
+            <number>6</number>
            </property>
            <property name="minimum">
             <double>0.001000000000000</double>
@@ -1140,7 +1141,7 @@
          <item row="0" column="0">
           <widget class="QLabel" name="micronsPixelLabel_4">
            <property name="text">
-            <string>Microns/pixel</string>
+            <string>Pixels/Micron</string>
            </property>
           </widget>
          </item>
@@ -1183,7 +1184,7 @@
          <item row="0" column="2">
           <widget class="QLabel" name="label_52">
            <property name="text">
-            <string>Insert micron/pixel ratio of image to be measured </string>
+            <string>Insert Pixels/Micronl ratio of image to be measured </string>
            </property>
           </widget>
          </item>
@@ -1229,7 +1230,7 @@
          <item row="0" column="0">
           <widget class="QLabel" name="micronsPixelLabel">
            <property name="text">
-            <string>Microns/pixel</string>
+            <string>Pixel/Micron</string>
            </property>
           </widget>
          </item>

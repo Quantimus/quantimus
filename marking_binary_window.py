@@ -173,6 +173,10 @@ class Classifier_Window(Window):
             self.features_array = np.array([area, eccentricity, convexity, circularity]).T
         return self.features_array
 
+    def calculate_window_props(self):
+        if self.window_props is None:
+            self.window_props = measure.regionprops(self.labeled_img)
+
     def get_training_data(self):
         if self.features_array is None:
             self.features_array = self.get_features_array()
@@ -206,6 +210,10 @@ class Classifier_Window(Window):
         json.dump(data, codecs.open(filename, 'w', encoding='utf-8'), separators=(',', ':'), sort_keys=True, indent=4)  ### this saves the array in .json format
 
     def save_training_data(self):
+        progress = g.myoquant.createProgressBar('Please wait training data is being saved...')
+        progress.show()
+        QtWidgets.QApplication.processEvents()
+
         filename = save_file_gui("Save training_data", filetypes='*.json')
         if filename is None:
             return None
@@ -264,12 +272,13 @@ class Classifier_Window(Window):
 
         progress = g.myoquant.createProgressBar('Please wait while fibers are being eroded...')
         progress.show()
+        QtWidgets.QApplication.processEvents()
 
         # Reset potentially old values=
         self.eroded_roi_states = None
         for i in np.nonzero(self.window_states == 3)[0]:
             self.window_states[i] = 1
-        g.myoquant.isCNFCalculated = False
+        g.myoquant.saved_dapi_states = None
         #Set all values in eroded_labeled_img to 0
         #The appropriate coordinates will be marked as 1 later
         self.eroded_labeled_img[:len(self.eroded_labeled_img - 1)] = 0

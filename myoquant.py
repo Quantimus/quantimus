@@ -190,7 +190,6 @@ class Myoquant():
         # Misc
         self.isMarkersFirstSelection = True
         self.isBinaryFirstSelection = True
-        self.isCNFCalculated = False
         self.isIntensityCalculated = False
 
         #GUI Setup
@@ -321,12 +320,14 @@ class Myoquant():
         #Reset any data currently saved in the system
         lower_bound = self.threshold1_slider.value()
         upper_bound = self.threshold2_slider.value()
+        #Original linspace = 8
         thresholds = np.linspace(lower_bound, upper_bound, 8)
         I = self.original_window_selector.window.image
         I_new = I
 
         progress = self.createProgressBar('Please wait while image is processed...')
         progress.show()
+        QtWidgets.QApplication.processEvents()
 
         for i in np.arange(len(thresholds) - 1):
             QtWidgets.QApplication.processEvents()
@@ -435,6 +436,11 @@ class Myoquant():
 
     def load_classification_to_trained_image(self):
         print('Loading Classification to Trained Image')
+
+        progress = self.createProgressBar('Please wait while fibers are being classified...')
+        progress.show()
+        QtWidgets.QApplication.processEvents()
+
         self.trained_img = Classifier_Window(self.classifier_window.image, 'Trained Image')
         self.trained_img.imageIdentifier = Classifier_Window.TRAINING
         self.trained_img.window_states = np.copy(self.roiStates)
@@ -446,6 +452,7 @@ class Myoquant():
 
         progress = self.createProgressBar('Please wait while image is filtered...')
         progress.show()
+        QtWidgets.QApplication.processEvents()
 
         try:
             min_circularity = g.myoquant.algorithm_gui.min_circularity_SpinBox.value()
@@ -652,7 +659,6 @@ class Myoquant():
                         previousCentroid = centroid
                         self.dapi_img.window_states[roi_num] = 3
             self.paintDapiColoredImage()
-            self.isCNFCalculated = True
 
     def save_dapi(self):
         print("Saving DAPI Data")
@@ -661,11 +667,8 @@ class Myoquant():
         progress.show()
         QtWidgets.QApplication.processEvents()
 
-        if self.isCNFCalculated == False:
-            g.alert("Make sure the CNF has been calculated")
-        else:
-            self.saved_dapi_rois = self.dapi_img.window_props
-            self.saved_dapi_states = np.copy(self.dapi_img.window_states)
+        self.saved_dapi_rois = self.dapi_img.window_props
+        self.saved_dapi_states = np.copy(self.dapi_img.window_states)
 
     def paintDapiColoredImage(self):
         if self.dapi_img is not None:
@@ -686,22 +689,39 @@ class Myoquant():
         if self.dapi_img is not None:
             for i in np.nonzero(self.dapi_img.window_states == 3)[0]:
                 self.dapi_img.window_states[i] = 1
-        self.isCNFCalculated = False
 
     def print_data(self):
 
+        props = None
+        if self.classifier_window is not None:
+            self.classifier_window.calculate_window_props()
+            props = self.classifier_window.window_props
+        elif self.trained_img is not None:
+            self.trained_img.calculate_window_props()
+            props = self.trained_img.window_props
+        elif self.filtered_trained_img is not None:
+            self.filtered_trained_img.calculate_window_props()
+            props = self.filtered_trained_img.window_props
+        elif self.intensity_img is not None:
+            self.intensity_img.calculate_window_props()
+            props = self.intensity_img.window_props
+        else:
+            self.dapi_img.calculate_window_props()
+            props = self.dapi_img.window_props
+
         progress = self.createProgressBar('Please wait while data is printed...')
         progress.show()
+        QtWidgets.QApplication.processEvents()
 
         scaleFactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
         resizeFactor = g.myoquant.algorithm_gui.resize_factor_SpinBox.value()
-        minferetProps = self.calc_min_feret_diameters(self.trained_img.window_props)
+        minferetProps = self.calc_min_feret_diameters(props)
 
         # Set up the multi-dimensional array to store all of the data
         dataArray = [['ROI #'], ['Area'], ['Minferet'], ['MFI'], ['CNF']]
 
         count = 0
-        for prop in self.trained_img.window_props:
+        for prop in props:
             QtWidgets.QApplication.processEvents()
 
             #Green States
@@ -715,7 +735,7 @@ class Myoquant():
                 dataArray[1].append(area)
 
                 # MinFeret
-                minferet = minferetProps[count] * (scaleFactor / resizeFactor)
+                minferet = minferetProps[count] / (scaleFactor * resizeFactor)
                 dataArray[2].append(minferet)
 
                 #MFI
@@ -730,7 +750,7 @@ class Myoquant():
                     dataArray[3].append(intensity)
 
                 #CNF - Purple States
-                if self.isCNFCalculated:
+                if self.saved_dapi_states is not None:
                     if self.saved_dapi_states[count] == 3:
                         dataArray[4].append("1")
                     else:
@@ -765,16 +785,15 @@ class Myoquant():
             #Update the progress bar so it shows movement
             QtWidgets.QApplication.processEvents()
 
-            if min(roi.convex_image.shape) == 1:
-                min_feret_diameters.append(1)
-            elif min(roi.convex_image.shape) == 2:
-                min_feret_diameters.append(2)
-            elif min(roi.convex_image.shape) == 3:
-                min_feret_diameters.append(3)
-            elif min(roi.convex_image.shape) == 4:
-                min_feret_diameters.append(4)
-            elif min(roi.convex_image.shape) == 5:
-                min_feret_diameters.append(5)
+            #Determine if all items in the array are True
+            allTrue = True
+            for row in roi.convex_image:
+                if not all(row):
+                    allTrue = False
+                    break
+
+            if allTrue:
+                min_feret_diameters.append(len(roi.convex_image.shape))
             else:
                 identity_convex_hull = roi.convex_image
                 coordinates = np.vstack(find_contours(identity_convex_hull, 0.5, fully_connected='high'))
@@ -874,7 +893,6 @@ class Myoquant():
         self.saved_dapi_rois = None
         self.saved_dapi_states = None
         # Misc
-        self.isCNFCalculated = False
         self.isIntensityCalculated = False
 
     def resetQuestion(self):
