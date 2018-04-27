@@ -40,6 +40,8 @@ class Classifier_Window(Window):
         #Window specific ROI and States
         self.window_props = None
         self.window_states = None
+        self.temp_props = None
+        self.temp_states = None
 
         #GUI Actions
         self.menu.addAction(QtWidgets.QAction("&Save Training Data", self, triggered=self.save_training_data))
@@ -86,6 +88,14 @@ class Classifier_Window(Window):
                     self.window_states[roi_num] = state
                     self.colored_img[x, y] = color
                     self.update_image(self.colored_img)
+                elif self.imageIdentifier == Classifier_Window.FLR:
+                    if self.temp_states is None:
+                        self.temp_states = np.copy(self.window_states)
+                    x, y = self.window_props[roi_num].coords.T
+                    color, state = self.flrMouseClickEvent(roi_num)
+                    self.temp_states[roi_num] = state
+                    self.colored_img[x, y] = color
+                    self.update_image(self.colored_img)
                 elif self.imageIdentifier == Classifier_Window.DAPI:
                     x, y = self.window_props[roi_num].coords.T
                     color, state = self.dapiMouseClickEvent(roi_num)
@@ -121,17 +131,23 @@ class Classifier_Window(Window):
     def trainingMouseClickEvent(self, roi_num):
         old_state = self.window_states[roi_num]
         new_state = (old_state + 1) % 3
-        #Skip White. There is no need to have White when training. -I changed this backt to normal because sometimes the identity of fibers are not clear
 
         #if new_state == 0:
         #    new_state = new_state + 1
         color = [Classifier_Window.WHITE, Classifier_Window.GREEN, Classifier_Window.RED][new_state]
         return color, new_state
 
+    def flrMouseClickEvent(self, roi_num):
+        old_state = self.temp_states[roi_num]
+        new_state = (old_state + 1) % 4
+
+        color = [Classifier_Window.WHITE, Classifier_Window.GREEN, Classifier_Window.RED, Classifier_Window.YELLOW][new_state]
+        return color, new_state
+
     def dapiMouseClickEvent(self, roi_num):
         old_state = self.window_states[roi_num]
         new_state = (old_state + 1) % 4
-        # Skip White. There is no need to have White when training
+        # Skip White. There is no need to have White in DAPI
         if new_state == 0:
             new_state = 1
         color = [Classifier_Window.WHITE, Classifier_Window.GREEN, Classifier_Window.RED, Classifier_Window.PURPLE][new_state]

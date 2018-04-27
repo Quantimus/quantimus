@@ -11,8 +11,6 @@ from sklearn import svm
 import pyqtgraph as pg
 import math
 import flika
-import threading
-import time
 
 from .marking_binary_window import *
 
@@ -140,7 +138,7 @@ def get_new_I(I, thresh1=.20, thresh2=.30):
         x, y = prop1.coords[0,:]
         prop2 = props_2[label_im_2[x, y] - 1]
 
-        if prop1.area > 65 * resizeFactor :
+        if prop1.area > 65 * resizeFactor**2 :
             area_ratio = prop2.area/prop1.area
             if area_ratio > 1.2:
                 border_idx = get_border_between_two_props(prop1, prop2)
@@ -180,12 +178,14 @@ class Myoquant():
         self.dapi_rois = None
         self.roiProps = None
         self.flourescenceIntensities = None
+        self.positive_fiber_rois = None
 
         #Printing Data
         self.saved_flourescence_rois = None
         self.saved_flourescence_states = None
         self.saved_dapi_rois = None
         self.saved_dapi_states = None
+        self.saved_positive_fibers = None
 
         # Misc
         self.isMarkersFirstSelection = True
@@ -247,6 +247,11 @@ class Myoquant():
         gui.run_Flr_button.pressed.connect(self.calculate_flourescence)
         gui.save_flourescence_button.pressed.connect(self.save_flourescence)
         gui.print_button.pressed.connect(self.print_data)
+
+        gui.determine_positives_button.pressed.connect(self.determine_positives)
+        gui.measure_positives_button.pressed.connect(self.measure_positives)
+        gui.clear_positives_button.pressed.connect(self.clear_positives)
+        gui.save_positives_button.pressed.connect(self.save_positives)
 
         gui.closeEvent = self.closeEvent
 
@@ -520,7 +525,7 @@ class Myoquant():
         self.flourescence_img = None
         # Select the image
         self.flourescence_img = Classifier_Window(self.flourescence_img_selector.window.image, 'Flourescence Image')
-        self.flourescence_img.imageIdentifier = Classifier_Window.FLR
+        self.flourescence_img.imageIdentifier = None
         self.flourescence_img.window_states = np.copy(self.flourescence_img_selector.window.window_states)
         self.paintFlrColoredImage()
 
@@ -572,6 +577,59 @@ class Myoquant():
             self.saved_flourescence_rois = self.flourescence_img.window_props
             self.saved_flourescence_states = np.copy(self.flourescence_img.window_states)
 
+
+
+
+
+
+
+
+    def determine_positives(self):
+        print("Determining Positive Fibers")
+        self.flourescence_img.imageIdentifier = Classifier_Window.FLR
+        #TODO: Is this everything that is needed?
+
+    def measure_positives(self):
+        print("Measuring Positive Fibers")
+
+        if self.positive_fiber_rois is None:
+            g.alert('Please mark at least one fiber as Positive')
+        else:
+            #Get the user-selected Positive Fibers
+            userSelectedStates = self.flourescence_img.temp_states
+
+            #Get the ROIs and sort them by MFI
+
+            #Get the lowest MFI from the list
+
+            #Loop through all ROIs and get any MFI that is higher than the lowest user selected
+
+            #Add ROI to positive_fiber_rois
+
+            #Paint the image appropriately
+
+    def clear_positives(self):
+        print("Clearing Positive Fibers")
+        self.flourescence_img.imageIdentifier = None
+        self.flourescence_img.temp_states = None
+        self.positive_fiber_rois = None
+        self.flourescence_img.set_roi_states()
+
+    def save_positives(self):
+        print("Saving Positive Fibers")
+
+        if self.positive_fiber_rois is None:
+            g.alert('Please mark at least one fiber as Positive')
+        else:
+            print()
+            #TODO: Is the reset data correct?
+
+
+
+
+
+
+
     def paintFlrColoredImage(self):
         if self.flourescence_img is not None:
             self.flourescence_img.set_roi_states()
@@ -581,6 +639,7 @@ class Myoquant():
         self.isIntensityCalculated = False
         self.saved_flourescence_rois = None
         self.saved_flourescence_states = None
+        self.positive_fiber_rois = None
 
     def select_dapi_image(self):
         print('DAPI image selected.')
@@ -726,7 +785,7 @@ class Myoquant():
 
             #Green States
             if self.roiStates[count] == 1 or self.roiStates[count] == 3:
-                # ROI Number
+                #ROI Number
                 dataArray[0].append(count)
 
                 #Area
@@ -734,9 +793,16 @@ class Myoquant():
                 area /= (scaleFactor**2 * resizeFactor**2)
                 dataArray[1].append(area)
 
-                # MinFeret
+                #MinFeret
                 minferet = minferetProps[count] / (scaleFactor * resizeFactor)
                 dataArray[2].append(minferet)
+
+                #CNF - Purple States
+                if self.saved_dapi_states is not None:
+                    if self.saved_dapi_states[count] == 3:
+                        dataArray[3].append("1")
+                    else:
+                        dataArray[3].append("0")
 
                 #MFI
                 if self.isIntensityCalculated:
@@ -747,14 +813,9 @@ class Myoquant():
                     if measuredIntensity > subtractionValue:
                         intensity = measuredIntensity - subtractionValue
 
-                    dataArray[3].append(intensity)
+                    dataArray[4].append(intensity)
 
-                #CNF - Purple States
-                if self.saved_dapi_states is not None:
-                    if self.saved_dapi_states[count] == 3:
-                        dataArray[4].append("1")
-                    else:
-                        dataArray[4].append("0")
+                #Positive Fibers
 
             count += 1
 
@@ -766,13 +827,13 @@ class Myoquant():
         worksheet.write_column('C1',dataArray[2])
         worksheet.write_column('D1',dataArray[3])
         worksheet.write_column('E1',dataArray[4])
+        worksheet.write_column('F1',dataArray[5])
 
-        worksheet.write('F1', 'Scale Factor (microns/pixel)')
-        worksheet.write('F2', scaleFactor)
-        worksheet.write('G1', 'Resize Factor')
-        worksheet.write('G2', resizeFactor)
+        worksheet.write('G1', 'Scale Factor (microns/pixel)')
+        worksheet.write('G2', scaleFactor)
+        worksheet.write('H1', 'Resize Factor')
+        worksheet.write('H2', resizeFactor)
 
-        #worksheet.write_column('E1', dataArray[4])
         workbook.close()
 
     def calc_min_feret_diameters(self, props):
@@ -892,6 +953,8 @@ class Myoquant():
         self.saved_flourescence_states = None
         self.saved_dapi_rois = None
         self.saved_dapi_states = None
+        self.saved_positive_fiber = None
+
         # Misc
         self.isIntensityCalculated = False
 
