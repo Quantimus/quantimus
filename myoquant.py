@@ -827,7 +827,7 @@ class Myoquant():
         worksheet.write_column('C1',dataArray[2])
         worksheet.write_column('D1',dataArray[3])
         worksheet.write_column('E1',dataArray[4])
-        worksheet.write_column('F1',dataArray[5])
+        #worksheet.write_column('F1',dataArray[5])
 
         worksheet.write('G1', 'Scale Factor (microns/pixel)')
         worksheet.write('G2', scaleFactor)
