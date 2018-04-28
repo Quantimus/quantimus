@@ -178,14 +178,16 @@ class Myoquant():
         self.dapi_rois = None
         self.roiProps = None
         self.flourescenceIntensities = None
-        self.positive_fiber_rois = None
+        self.positiveFiberRois = None
+        self.positiveFiberStates = None
 
         #Printing Data
         self.saved_flourescence_rois = None
         self.saved_flourescence_states = None
         self.saved_dapi_rois = None
         self.saved_dapi_states = None
-        self.saved_positive_fibers = None
+        self.saved_positive_rois = None
+        self.saved_positive_states = None
 
         # Misc
         self.isMarkersFirstSelection = True
@@ -477,7 +479,6 @@ class Myoquant():
             states = np.copy(self.trained_img.window_states)
             count = 0
 
-
             for feature in features:
                 #Update the progress bar so it shows movement
                 QtWidgets.QApplication.processEvents()
@@ -508,7 +509,7 @@ class Myoquant():
                             states[count] = 2
                 else:
                     states[count] = 2
-                count = count + 1
+                count += 1
 
             self.filtered_trained_img = Classifier_Window(self.trained_img.image, 'Filtered Trained Image')
             self.filtered_trained_img.imageIdentifier = Classifier_Window.TRAINING
@@ -577,58 +578,60 @@ class Myoquant():
             self.saved_flourescence_rois = self.flourescence_img.window_props
             self.saved_flourescence_states = np.copy(self.flourescence_img.window_states)
 
-
-
-
-
-
-
-
     def determine_positives(self):
         print("Determining Positive Fibers")
         self.flourescence_img.imageIdentifier = Classifier_Window.FLR
-        #TODO: Is this everything that is needed?
 
     def measure_positives(self):
         print("Measuring Positive Fibers")
-
-        if self.positive_fiber_rois is None:
-            g.alert('Please mark at least one fiber as Positive')
+        if self.isIntensityCalculated == False:
+            g.alert("Make sure the Flourescence Intensity has been calculated")
         else:
-            #Get the user-selected Positive Fibers
-            userSelectedStates = self.flourescence_img.temp_states
+            #Get the user-selected Positive Fiber's MFI values
+            userSelectedProps = []
+            count = 0
+            for prop in self.flourescence_img.window_props:
+                if self.flourescence_img.temp_states is not None and self.flourescence_img.temp_states[count] == 3:
+                    userSelectedProps.append(g.myoquant.flourescenceIntensities[count])
 
-            #Get the ROIs and sort them by MFI
+                count += 1
 
-            #Get the lowest MFI from the list
+            #Sort the MFI values
+            userSelectedProps.sort()
 
-            #Loop through all ROIs and get any MFI that is higher than the lowest user selected
+            lowestMFIValue = None
+            if len(userSelectedProps) > 0:
+                #Get the lowest MFI from the list
+                lowestMFIValue = userSelectedProps[0]
 
-            #Add ROI to positive_fiber_rois
+                #Loop through all ROIs and get any MFI that is higher than the lowest user selected
+                count = 0
+                self.positiveFiberRois = []
+                self.positiveFiberStates = []
+                for prop in self.flourescence_img.window_props:
+                    #build the positive states list - for printing
+                    self.positiveFiberStates.append(self.flourescence_img.temp_states[count])
+                    if self.flourescence_img.temp_states[count] != 2 and g.myoquant.flourescenceIntensities[count] >= lowestMFIValue:
+                        self.positiveFiberRois.append(prop)
+                        self.positiveFiberStates[count] = 3
+                    count += 1
 
-            #Paint the image appropriately
+                #Paint the image appropriately
+                self.paintPositiveFibers(self.positiveFiberRois)
+
+            else:
+                g.alert("Please select at least one Positive Fiber")
 
     def clear_positives(self):
         print("Clearing Positive Fibers")
         self.flourescence_img.imageIdentifier = None
         self.flourescence_img.temp_states = None
-        self.positive_fiber_rois = None
         self.flourescence_img.set_roi_states()
 
     def save_positives(self):
         print("Saving Positive Fibers")
-
-        if self.positive_fiber_rois is None:
-            g.alert('Please mark at least one fiber as Positive')
-        else:
-            print()
-            #TODO: Is the reset data correct?
-
-
-
-
-
-
+        self.saved_positive_rois = self.positiveFiberRois
+        self.saved_positive_states = self.positiveFiberStates
 
     def paintFlrColoredImage(self):
         if self.flourescence_img is not None:
@@ -637,9 +640,19 @@ class Myoquant():
     def resetFlourescenceData(self):
         self.flourescenceIntensities = None
         self.isIntensityCalculated = False
+        self.positiveFiberRois = None
+        self.positiveFiberStates = None
         self.saved_flourescence_rois = None
         self.saved_flourescence_states = None
-        self.positive_fiber_rois = None
+        self.saved_positive_rois = None
+        self.saved_positive_states = None
+
+    def paintPositiveFibers(self, props):
+        if props is not None:
+            for prop in props:
+                x, y = prop.coords.T
+                self.flourescence_img.colored_img[x, y] = Classifier_Window.BLUE
+            self.flourescence_img.update_image(self.flourescence_img.colored_img)
 
     def select_dapi_image(self):
         print('DAPI image selected.')
@@ -703,7 +716,7 @@ class Myoquant():
                     overlapY = count % imageWidth
                     newList = [overlapX, overlapY]
                     overlappedCoords.append(newList)
-                count = count + 1
+                count += 1
 
             previousCentroid = 0
 
@@ -777,7 +790,7 @@ class Myoquant():
         minferetProps = self.calc_min_feret_diameters(props)
 
         # Set up the multi-dimensional array to store all of the data
-        dataArray = [['ROI #'], ['Area'], ['Minferet'], ['MFI'], ['CNF']]
+        dataArray = [['ROI #'], ['Area'], ['Minferet'], ['CNF'], ['MFI'], ['Positive']]
 
         count = 0
         for prop in props:
@@ -816,6 +829,11 @@ class Myoquant():
                     dataArray[4].append(intensity)
 
                 #Positive Fibers
+                if self.saved_positive_rois is not None:
+                    if(self.saved_positive_states[count] == 3):
+                        dataArray[5].append(1)
+                    else:
+                        dataArray[5].append(0)
 
             count += 1
 
@@ -827,7 +845,7 @@ class Myoquant():
         worksheet.write_column('C1',dataArray[2])
         worksheet.write_column('D1',dataArray[3])
         worksheet.write_column('E1',dataArray[4])
-        #worksheet.write_column('F1',dataArray[5])
+        worksheet.write_column('F1',dataArray[5])
 
         worksheet.write('G1', 'Scale Factor (microns/pixel)')
         worksheet.write('G2', scaleFactor)
@@ -948,12 +966,15 @@ class Myoquant():
         self.dapi_rois = None
         self.roiProps = None
         self.flourescenceIntensities = None
+        self.positiveFiberRois = None
+        self.positiveFiberStates = None
         # Printing Data
         self.saved_flourescence_rois = None
         self.saved_flourescence_states = None
         self.saved_dapi_rois = None
         self.saved_dapi_states = None
-        self.saved_positive_fiber = None
+        self.saved_positive_rois = None
+        self.saved_positive_states = None
 
         # Misc
         self.isIntensityCalculated = False
