@@ -75,8 +75,8 @@ class ClassifierWindow(Window):
                 prop = self.window_props[roi_num]
 
                 mfi = 'Unknown'
-                if g.myoquant.flourescenceIntensities is not None:
-                    mfi = g.myoquant.flourescenceIntensities[roi_num]
+                if g.quantimus.flourescenceIntensities is not None:
+                    mfi = g.quantimus.flourescenceIntensities[roi_num]
 
                 print('ROI #{}. area={}. eccentricity={}. convexity={}. circularity={}. perimeter={}. minor_axis_length={}. MFI={}. '
                       .format(roi_num,
@@ -147,26 +147,26 @@ class ClassifierWindow(Window):
 
     def update_parent_image(self, roi_num, x, y, states):
         # Update the Parent window's colors
-        if g.myoquant.filtered_trained_img is not None:
+        if g.quantimus.filtered_trained_img is not None:
             # Update the Filtered Trained Image if available
             try:
                 trained_color, trained_state = self.filtered_mouse_click_event(roi_num, states)
-                g.myoquant.filtered_trained_img.window_states[roi_num] = trained_state
-                g.myoquant.filtered_trained_img.colored_img[x, y] = trained_color
-                g.myoquant.filtered_trained_img.update_image(g.myoquant.filtered_trained_img.colored_img)
+                g.quantimus.filtered_trained_img.window_states[roi_num] = trained_state
+                g.quantimus.filtered_trained_img.colored_img[x, y] = trained_color
+                g.quantimus.filtered_trained_img.update_image(g.quantimus.filtered_trained_img.colored_img)
                 # Update the Parent window's States
-                g.myoquant.roiStates[roi_num] = trained_state
+                g.quantimus.roiStates[roi_num] = trained_state
             except AttributeError:
                 print("No Parent Filtered Trained Image to Update")
-        elif g.myoquant.trained_img is not None:
+        elif g.quantimus.trained_img is not None:
             # Update the Trained Image if available
             try:
                 trained_color, trained_state = self.filtered_mouse_click_event(roi_num, states)
-                g.myoquant.trained_img.window_states[roi_num] = trained_state
-                g.myoquant.trained_img.colored_img[x, y] = trained_color
-                g.myoquant.trained_img.update_image(g.myoquant.trained_img.colored_img)
+                g.quantimus.trained_img.window_states[roi_num] = trained_state
+                g.quantimus.trained_img.colored_img[x, y] = trained_color
+                g.quantimus.trained_img.update_image(g.quantimus.trained_img.colored_img)
                 # Update the Parent window's States
-                g.myoquant.roiStates[roi_num] = trained_state
+                g.quantimus.roiStates[roi_num] = trained_state
             except AttributeError:
                 print("No Parent Trained Image to Update")
         else:
@@ -193,6 +193,7 @@ class ClassifierWindow(Window):
             convexity = np.array([p.filled_area / p.convex_area for p in self.window_props])
             perimeter = np.array([p.perimeter for p in self.window_props])
             circularity = np.empty_like(perimeter)
+
             for i in np.arange(len(circularity)):
                 if perimeter[i] == 0:
                     circularity[i] = 0
@@ -218,13 +219,13 @@ class ClassifierWindow(Window):
         if self.features_array is None:
             self.features_array = self.get_features_array()
 
-        min_ferets = np.array([g.myoquant.calc_min_feret_diameters(g.win.props)]).T
+        min_ferets = np.array([g.quantimus.calc_min_feret_diameters(g.win.props)]).T
         roi_num = np.arange(self.window_states)
         area = self.features_array[:, 0]
 
         x = np.concatenate((roi_num[:, np.newaxis], area[:, np.newaxis], min_ferets), 1)
-        if g.myoquant.intensity_img is not None and g.myoquant.flourescence_img is not None:
-            y = measure.regionprops(g.myoquant.flourescence_img, g.myoquant.intensity_img)
+        if g.quantimus.intensity_img is not None and g.quantimus.flourescence_img is not None:
+            y = measure.regionprops(g.quantimus.flourescence_img, g.quantimus.intensity_img)
             mfi = np.array([p.mean_intensity for p in y])
             x = np.concatenate((x, mfi[:, np.newaxis]), 1)
         return x
@@ -239,7 +240,7 @@ class ClassifierWindow(Window):
         json.dump(data, codecs.open(filename, 'w', encoding='utf-8'), separators=(',', ':'), sort_keys=True, indent=4)
 
     def save_training_data(self):
-        progress = g.myoquant.create_progress_bar('Please wait training data is being saved...')
+        progress = g.quantimus.create_progress_bar('Please wait training data is being saved...')
         progress.show()
         QtWidgets.QApplication.processEvents()
 
@@ -276,7 +277,7 @@ class ClassifierWindow(Window):
         if len(roi_states) != len(self.window_states):
             g.alert('The number of ROIs in this file does not match the number of ROIs in the image. Cannot import classifications')
         else:
-            g.myoquant.roiStates = np.copy(roi_states)
+            g.quantimus.roiStates = np.copy(roi_states)
             self.window_states = np.copy(roi_states)
             self.set_roi_states()
 
@@ -301,13 +302,13 @@ class ClassifierWindow(Window):
         self.update_image(self.colored_img)
 
     def run_erosion(self):
-        progress = g.myoquant.create_progress_bar('Please wait while fibers are being eroded...')
+        progress = g.quantimus.create_progress_bar('Please wait while fibers are being eroded...')
         progress.show()
         QtWidgets.QApplication.processEvents()
 
         for i in np.nonzero(self.window_states == 3)[0]:
             self.window_states[i] = 1
-        g.myoquant.saved_dapi_states = None
+        g.quantimus.saved_dapi_states = None
         # Set all values in eroded_labeled_img to 0
         # The appropriate coordinates will be marked as 1 later
         self.eroded_labeled_img[:len(self.eroded_labeled_img - 1)] = 0
@@ -320,7 +321,7 @@ class ClassifierWindow(Window):
             self.colored_img[x, y] = ClassifierWindow.GREEN
 
             individualprop = self.window_props[state]
-            targetsize = (100 - g.myoquant.algorithm_gui.erosion_percentage_SpinBox.value()) * .01
+            targetsize = (100 - g.quantimus.algorithm_gui.erosion_percentage_SpinBox.value()) * .01
             targetarea = individualprop.area * targetsize
 
             if targetarea > 10:
@@ -355,6 +356,6 @@ class ClassifierWindow(Window):
                 self.eroded_labeled_img[erodedx, erodedy] = 1
 
         eroded_label = label(self.eroded_labeled_img, connectivity=2)
-        g.myoquant.eroded_roi_states = measure.regionprops(eroded_label)
-        g.myoquant.eroded_labeled_img = self.eroded_labeled_img
-        g.myoquant.paint_dapi_colored_image()
+        g.quantimus.eroded_roi_states = measure.regionprops(eroded_label)
+        g.quantimus.eroded_labeled_img = self.eroded_labeled_img
+        g.quantimus.paint_dapi_colored_image()

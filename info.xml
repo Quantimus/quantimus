@@ -1,19 +1,19 @@
-<plugin name="myoquant">
+<plugin name="QuantiMus">
     <directory>
-        myoquant
+        quantimus
     </directory>
 	<version>
-		2017.09.06
+		2018.08.03
 	</version>
 	<author>
-		Kyle Ellefsen
+		QuantiMus Organization
 	</author>
 	<url>
-		https://github.com/kyleellefsen/myoquant/archive/master.zip
+		https://github.com/Quantimus/quantimus/tree/perimeter_method
 	</url>
 	<dependencies>
 	</dependencies>
 	<menu_layout>
-		<action location="myoquant" function="myoquant.gui">myoquant</action>
+		<action location="quantimus" function="quantimus.gui">Open QuantiMus</action>
 	</menu_layout>
 </plugin>

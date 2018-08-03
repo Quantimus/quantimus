@@ -131,7 +131,7 @@ def get_border_between_two_props(prop1, prop2):
 
 
 def get_new_image(image, thresh1=.20, thresh2=.30):
-    resizefactor = g.myoquant.algorithm_gui.resize_factor_SpinBox.value()
+    resizefactor = g.quantimus.algorithm_gui.resize_factor_SpinBox.value()
     label_im_1 = label(image < thresh1, connectivity=2)
     label_im_2 = label(image < thresh2, connectivity=2)
     props_1 = measure.regionprops(label_im_1)
@@ -156,7 +156,7 @@ def get_new_image(image, thresh1=.20, thresh2=.30):
     return image_new
 
 
-class Myoquant:
+class Quantimus:
     """
     Muscle Cell Analysis Software
     """
@@ -216,7 +216,7 @@ class Myoquant:
     def gui(self):
 
         # GUI Setup
-        gui = uic.loadUi(os.path.join(os.path.dirname(__file__), 'myoquant.ui'))
+        gui = uic.loadUi(os.path.join(os.path.dirname(__file__), 'quantimus.ui'))
         self.algorithm_gui = gui
         gui.show()
         self.original_window_selector = WindowSelector()
@@ -224,11 +224,11 @@ class Myoquant:
         gui.gridLayout_18.addWidget(self.original_window_selector)
         self.threshold1_slider = SliderLabel(3)
         self.threshold1_slider.setRange(0, 1)
-        self.threshold1_slider.setValue(.22)
+        self.threshold1_slider.setValue(.2)
         self.threshold1_slider.valueChanged.connect(self.threshold_slider_changed)
         self.threshold2_slider = SliderLabel(2)
         self.threshold2_slider.setRange(0, 1)
-        self.threshold2_slider.setValue(.1)
+        self.threshold2_slider.setValue(.4)
         self.threshold2_slider.valueChanged.connect(self.threshold_slider_changed)
         gui.gridLayout_threshold_one.addWidget(self.threshold1_slider)
         gui.gridLayout_threshold_two.addWidget(self.threshold2_slider)
@@ -275,7 +275,7 @@ class Myoquant:
         if self.original_window_selector.window is None:
             g.alert('You must select a Window before creating the markers window.')
         else:
-            if self.reset_data(Myoquant.MARKERS):
+            if self.reset_data(Quantimus.MARKERS):
                 win = self.original_window_selector.window
                 needalert = False
                 if np.max(win.image) > 1:
@@ -356,7 +356,7 @@ class Myoquant:
         return x
 
     def close_event(self, event):
-        print('Closing myoquant gui')
+        print('Closing quantimus gui')
         if self.classifier_window is not None:
             self.classifier_window.close()
         event.accept()  # let the window close
@@ -374,7 +374,7 @@ class Myoquant:
 
     def select_binary_image(self):
         # Reset any data currently saved in the system
-        if self.reset_data(Myoquant.BINARY):
+        if self.reset_data(Quantimus.BINARY):
             print('Binary image selected.')
             self.classifier_window = ClassifierWindow(self.binary_img_selector.window.image, 'Training Image')
             self.classifier_window.imageIdentifier = ClassifierWindow.TRAINING
@@ -387,7 +387,7 @@ class Myoquant:
             g.alert("Please select a Binary Image")
         else:
             # Start threading and Progress Bar
-            progress = g.myoquant.create_progress_bar('Please wait while fibers are being classified...')
+            progress = g.quantimus.create_progress_bar('Please wait while fibers are being classified...')
             progress.show()
             QtWidgets.QApplication.processEvents()
 
@@ -463,18 +463,18 @@ class Myoquant:
         QtWidgets.QApplication.processEvents()
 
         try:
-            min_circularity = g.myoquant.algorithm_gui.min_circularity_SpinBox.value()
-            max_circularity = g.myoquant.algorithm_gui.max_circularity_SpinBox.value()
-            circularitycheckbox = g.myoquant.algorithm_gui.circularity_CheckBox
-            min_area = g.myoquant.algorithm_gui.min_area_SpinBox.value()
-            max_area = g.myoquant.algorithm_gui.max_area_SpinBox.value()
-            areacheckbox = g.myoquant.algorithm_gui.area_CheckBox
-            min_convexity = g.myoquant.algorithm_gui.min_convexity_SpinBox.value()
-            max_convexity = g.myoquant.algorithm_gui.max_convexity_SpinBox.value()
-            convexitycheckbox = g.myoquant.algorithm_gui.convexity_CheckBox
-            min_eccentricity = g.myoquant.algorithm_gui.min_eccentricity_SpinBox.value()
-            max_eccentricity = g.myoquant.algorithm_gui.max_eccentricity_SpinBox.value()
-            eccentricitycheckbox = g.myoquant.algorithm_gui.eccentricity_CheckBox
+            min_circularity = g.quantimus.algorithm_gui.min_circularity_SpinBox.value()
+            max_circularity = g.quantimus.algorithm_gui.max_circularity_SpinBox.value()
+            circularitycheckbox = g.quantimus.algorithm_gui.circularity_CheckBox
+            min_area = g.quantimus.algorithm_gui.min_area_SpinBox.value()
+            max_area = g.quantimus.algorithm_gui.max_area_SpinBox.value()
+            areacheckbox = g.quantimus.algorithm_gui.area_CheckBox
+            min_convexity = g.quantimus.algorithm_gui.min_convexity_SpinBox.value()
+            max_convexity = g.quantimus.algorithm_gui.max_convexity_SpinBox.value()
+            convexitycheckbox = g.quantimus.algorithm_gui.convexity_CheckBox
+            min_eccentricity = g.quantimus.algorithm_gui.min_eccentricity_SpinBox.value()
+            max_eccentricity = g.quantimus.algorithm_gui.max_eccentricity_SpinBox.value()
+            eccentricitycheckbox = g.quantimus.algorithm_gui.eccentricity_CheckBox
 
             features = self.trained_img.get_features_array()
             states = np.copy(self.trained_img.window_states)
@@ -593,7 +593,7 @@ class Myoquant:
             userselectedprops = []
             for i in range(len(self.flourescence_img.window_props)):
                 if self.flourescence_img.temp_states is not None and self.flourescence_img.temp_states[i] == 3:
-                    userselectedprops.append(g.myoquant.flourescenceIntensities[i])
+                    userselectedprops.append(g.quantimus.flourescenceIntensities[i])
 
             # Sort the MFI values
             userselectedprops.sort()
@@ -608,7 +608,7 @@ class Myoquant:
                 for i in range(len(self.flourescence_img.window_props)):
                     # build the positive states list - for printing
                     self.positiveFiberStates.append(self.flourescence_img.temp_states[i])
-                    if self.flourescence_img.temp_states[i] != 2 and g.myoquant.flourescenceIntensities[i] >= lowest_mfi_value:
+                    if self.flourescence_img.temp_states[i] != 2 and g.quantimus.flourescenceIntensities[i] >= lowest_mfi_value:
                         self.positiveFiberRois.append(self.flourescence_img.window_props[i])
                         self.positiveFiberStates[i] = 3
 
@@ -784,7 +784,7 @@ class Myoquant:
         QtWidgets.QApplication.processEvents()
 
         scalefactor = self.algorithm_gui.microns_per_pixel_SpinBox.value()
-        resizefactor = g.myoquant.algorithm_gui.resize_factor_SpinBox.value()
+        resizefactor = g.quantimus.algorithm_gui.resize_factor_SpinBox.value()
         minferetprops = self.calc_min_feret_diameters(props)
 
         # Set up the multi-dimensional array to store all of the data
@@ -816,7 +816,7 @@ class Myoquant:
 
                 # MFI
                 if self.isIntensityCalculated:
-                    subtractionvalue = g.myoquant.algorithm_gui.flourescence_subtraction_SpinBox.value()
+                    subtractionvalue = g.quantimus.algorithm_gui.flourescence_subtraction_SpinBox.value()
                     measuredintensity = self.flourescenceIntensities[i]
                     intensity = 0
 
@@ -882,7 +882,7 @@ class Myoquant:
 
     def reset_data(self, originating_window):
         reset = False
-        if originating_window == Myoquant.MARKERS:
+        if originating_window == Quantimus.MARKERS:
             print("Markers")
             if self.isMarkersFirstSelection:
                 self.reset_all_data()
@@ -917,7 +917,7 @@ class Myoquant:
                         self.binary_img = None
                     self.isBinaryFirstSelection = True
                     reset = True
-        elif originating_window == Myoquant.BINARY:
+        elif originating_window == Quantimus.BINARY:
             print("Binary")
             if self.isBinaryFirstSelection:
                 self.reset_all_data()
@@ -982,5 +982,5 @@ class Myoquant:
             defaultButton=QtWidgets.QMessageBox.No)
 
 
-myoquant = Myoquant()
-g.myoquant = myoquant
+quantimus = Quantimus()
+g.quantimus = quantimus
