@@ -6,15 +6,21 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>823</width>
-    <height>417</height>
+    <width>909</width>
+    <height>451</height>
    </rect>
   </property>
   <property name="sizePolicy">
-   <sizepolicy hsizetype="Maximum" vsizetype="Expanding">
+   <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
     <horstretch>0</horstretch>
     <verstretch>0</verstretch>
    </sizepolicy>
+  </property>
+  <property name="font">
+   <font>
+    <family>Arial</family>
+    <pointsize>11</pointsize>
+   </font>
   </property>
   <property name="windowTitle">
    <string>Flika - QuantiMus Plugin</string>
@@ -24,21 +30,21 @@
     <rect>
      <x>10</x>
      <y>10</y>
-     <width>801</width>
-     <height>391</height>
+     <width>891</width>
+     <height>431</height>
     </rect>
    </property>
-   <layout class="QGridLayout" name="gridLayout_3">
+   <layout class="QHBoxLayout" name="horizontalLayout">
     <property name="sizeConstraint">
      <enum>QLayout::SetDefaultConstraint</enum>
     </property>
-    <item row="0" column="0">
+    <item>
      <widget class="QTabWidget" name="analyze_tab_widget">
       <property name="enabled">
        <bool>true</bool>
       </property>
       <property name="sizePolicy">
-       <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+       <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
         <horstretch>0</horstretch>
         <verstretch>0</verstretch>
        </sizepolicy>
@@ -52,7 +58,7 @@
       <property name="font">
        <font>
         <family>Arial</family>
-        <pointsize>9</pointsize>
+        <pointsize>11</pointsize>
        </font>
       </property>
       <property name="currentIndex">
@@ -67,13 +73,20 @@
          <rect>
           <x>11</x>
           <y>11</y>
-          <width>211</width>
-          <height>17</height>
+          <width>400</width>
+          <height>35</height>
          </rect>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
         <property name="font">
          <font>
-          <pointsize>9</pointsize>
+          <family>Arial</family>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="text">
@@ -94,6 +107,12 @@
           <layout class="QGridLayout" name="gridLayout_6">
            <item row="0" column="0">
             <widget class="QLabel" name="label_4">
+             <property name="font">
+              <font>
+               <family>Arial</family>
+               <pointsize>11</pointsize>
+              </font>
+             </property>
              <property name="text">
               <string>Set regions that are true myofibers to black. Set myofiber boundaries to white. Using the blue threshold will 
 create boundaries if a fiber is successfully connected; 
@@ -106,6 +125,12 @@ create boundaries if a fiber is successfully connected;
             <layout class="QGridLayout" name="gridLayout_4">
              <item row="2" column="0">
               <widget class="QLabel" name="label_3">
+               <property name="font">
+                <font>
+                 <family>Arial</family>
+                 <pointsize>11</pointsize>
+                </font>
+               </property>
                <property name="text">
                 <string>White Threshold</string>
                </property>
@@ -116,6 +141,12 @@ create boundaries if a fiber is successfully connected;
              </item>
              <item row="1" column="0">
               <widget class="QLabel" name="label">
+               <property name="font">
+                <font>
+                 <family>Arial</family>
+                 <pointsize>11</pointsize>
+                </font>
+               </property>
                <property name="text">
                 <string>Blue Threshold</string>
                </property>
@@ -146,6 +177,12 @@ create boundaries if a fiber is successfully connected;
           </item>
           <item row="0" column="0">
            <widget class="QPushButton" name="fill_boundaries_button">
+            <property name="font">
+             <font>
+              <family>Arial</family>
+              <pointsize>11</pointsize>
+             </font>
+            </property>
             <property name="text">
              <string>Fill Myofiber Boundary Gaps</string>
             </property>
@@ -206,7 +243,7 @@ create boundaries if a fiber is successfully connected;
         </property>
         <property name="font">
          <font>
-          <pointsize>9</pointsize>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="text">
@@ -218,9 +255,15 @@ create boundaries if a fiber is successfully connected;
          <rect>
           <x>30</x>
           <y>160</y>
-          <width>241</width>
-          <height>28</height>
+          <width>301</width>
+          <height>35</height>
          </rect>
+        </property>
+        <property name="font">
+         <font>
+          <family>Arial</family>
+          <pointsize>11</pointsize>
+         </font>
         </property>
         <property name="text">
          <string>Run Algorithm: Saved Training Data</string>
@@ -230,13 +273,15 @@ create boundaries if a fiber is successfully connected;
         <property name="geometry">
          <rect>
           <x>30</x>
-          <y>120</y>
-          <width>241</width>
-          <height>28</height>
+          <y>117</y>
+          <width>301</width>
+          <height>35</height>
          </rect>
         </property>
         <property name="font">
          <font>
+          <family>Arial</family>
+          <pointsize>11</pointsize>
           <weight>50</weight>
           <bold>false</bold>
           <stylestrategy>PreferDefault</stylestrategy>
@@ -247,6 +292,12 @@ create boundaries if a fiber is successfully connected;
         </property>
         <property name="text">
          <string>Run Algorithm: Labeled Image</string>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>16</width>
+          <height>16</height>
+         </size>
         </property>
        </widget>
        <widget class="QPushButton" name="manual_filter_button">
@@ -261,6 +312,7 @@ create boundaries if a fiber is successfully connected;
         <property name="font">
          <font>
           <family>Arial</family>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="text">
@@ -279,6 +331,7 @@ create boundaries if a fiber is successfully connected;
         <property name="font">
          <font>
           <family>Arial</family>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="text">
@@ -297,6 +350,7 @@ create boundaries if a fiber is successfully connected;
         <property name="font">
          <font>
           <family>Arial</family>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="text">
@@ -323,6 +377,7 @@ create boundaries if a fiber is successfully connected;
            <property name="font">
             <font>
              <family>Arial</family>
+             <pointsize>11</pointsize>
              <weight>75</weight>
              <bold>true</bold>
             </font>
@@ -409,6 +464,7 @@ create boundaries if a fiber is successfully connected;
            <property name="font">
             <font>
              <family>Arial</family>
+             <pointsize>11</pointsize>
             </font>
            </property>
            <property name="text">
@@ -466,6 +522,7 @@ create boundaries if a fiber is successfully connected;
            <property name="font">
             <font>
              <family>Arial</family>
+             <pointsize>11</pointsize>
             </font>
            </property>
            <property name="text">
@@ -523,6 +580,7 @@ create boundaries if a fiber is successfully connected;
            <property name="font">
             <font>
              <family>Arial</family>
+             <pointsize>11</pointsize>
              <weight>75</weight>
              <bold>true</bold>
             </font>
@@ -558,6 +616,7 @@ create boundaries if a fiber is successfully connected;
            <property name="font">
             <font>
              <family>Arial</family>
+             <pointsize>11</pointsize>
             </font>
            </property>
            <property name="text">
@@ -570,6 +629,7 @@ create boundaries if a fiber is successfully connected;
            <property name="font">
             <font>
              <family>Arial</family>
+             <pointsize>11</pointsize>
              <weight>75</weight>
              <bold>true</bold>
             </font>
@@ -584,6 +644,7 @@ create boundaries if a fiber is successfully connected;
            <property name="font">
             <font>
              <family>Arial</family>
+             <pointsize>11</pointsize>
             </font>
            </property>
            <property name="text">
@@ -639,6 +700,7 @@ create boundaries if a fiber is successfully connected;
            <property name="font">
             <font>
              <family>Arial</family>
+             <pointsize>11</pointsize>
              <weight>75</weight>
              <bold>true</bold>
             </font>
@@ -655,9 +717,15 @@ create boundaries if a fiber is successfully connected;
          <rect>
           <x>30</x>
           <y>200</y>
-          <width>241</width>
-          <height>28</height>
+          <width>301</width>
+          <height>35</height>
          </rect>
+        </property>
+        <property name="font">
+         <font>
+          <family>Arial</family>
+          <pointsize>11</pointsize>
+         </font>
         </property>
         <property name="text">
          <string>Load Previous Classification</string>
@@ -675,6 +743,7 @@ create boundaries if a fiber is successfully connected;
         <property name="font">
          <font>
           <family>Arial</family>
+          <pointsize>11</pointsize>
           <weight>75</weight>
           <bold>true</bold>
          </font>
@@ -692,14 +761,14 @@ create boundaries if a fiber is successfully connected;
         <property name="geometry">
          <rect>
           <x>30</x>
-          <y>270</y>
+          <y>273</y>
           <width>21</width>
           <height>21</height>
          </rect>
         </property>
         <property name="font">
          <font>
-          <pointsize>9</pointsize>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="text">
@@ -710,18 +779,25 @@ create boundaries if a fiber is successfully connected;
         <property name="geometry">
          <rect>
           <x>30</x>
-          <y>225</y>
-          <width>151</width>
+          <y>220</y>
+          <width>271</width>
           <height>21</height>
          </rect>
         </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
         <property name="font">
          <font>
-          <pointsize>9</pointsize>
+          <family>Arial</family>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="text">
-         <string>3.  Erode myofibers by </string>
+         <string>3.   Erode myofibers by: </string>
         </property>
        </widget>
        <widget class="QWidget" name="gridLayoutWidget_11">
@@ -745,13 +821,20 @@ create boundaries if a fiber is successfully connected;
          <rect>
           <x>50</x>
           <y>320</y>
-          <width>101</width>
-          <height>21</height>
+          <width>141</width>
+          <height>35</height>
          </rect>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
         <property name="font">
          <font>
-          <pointsize>9</pointsize>
+          <family>Arial</family>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="text">
@@ -762,14 +845,14 @@ create boundaries if a fiber is successfully connected;
         <property name="geometry">
          <rect>
           <x>30</x>
-          <y>320</y>
+          <y>325</y>
           <width>21</width>
           <height>21</height>
          </rect>
         </property>
         <property name="font">
          <font>
-          <pointsize>9</pointsize>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="text">
@@ -787,25 +870,33 @@ create boundaries if a fiber is successfully connected;
         </property>
         <property name="font">
          <font>
-          <pointsize>9</pointsize>
+          <family>Arial</family>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="text">
-         <string>1.  Select trained image containing myofiber ROIs</string>
+         <string>1.   Select trained image containing myofiber ROIs</string>
         </property>
        </widget>
        <widget class="QLabel" name="label_50">
         <property name="geometry">
          <rect>
-          <x>210</x>
-          <y>225</y>
-          <width>61</width>
+          <x>270</x>
+          <y>220</y>
+          <width>81</width>
           <height>21</height>
          </rect>
         </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
         <property name="font">
          <font>
-          <pointsize>9</pointsize>
+          <family>Arial</family>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="text">
@@ -817,13 +908,14 @@ create boundaries if a fiber is successfully connected;
          <rect>
           <x>20</x>
           <y>20</y>
-          <width>461</width>
+          <width>691</width>
           <height>21</height>
          </rect>
         </property>
         <property name="font">
          <font>
-          <pointsize>9</pointsize>
+          <family>Arial</family>
+          <pointsize>11</pointsize>
           <weight>75</weight>
           <bold>true</bold>
          </font>
@@ -843,25 +935,32 @@ create boundaries if a fiber is successfully connected;
         </property>
         <property name="font">
          <font>
-          <pointsize>9</pointsize>
+          <family>Arial</family>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="text">
-         <string>2.  Select binary DAPI image to overlay</string>
+         <string>2.   Select binary DAPI image to overlay</string>
         </property>
        </widget>
        <widget class="QSpinBox" name="erosion_percentage_SpinBox">
         <property name="geometry">
          <rect>
-          <x>160</x>
-          <y>225</y>
+          <x>220</x>
+          <y>218</y>
           <width>42</width>
-          <height>21</height>
+          <height>25</height>
          </rect>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
         <property name="font">
          <font>
-          <pointsize>9</pointsize>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="minimum">
@@ -876,13 +975,20 @@ create boundaries if a fiber is successfully connected;
          <rect>
           <x>50</x>
           <y>270</y>
-          <width>101</width>
-          <height>21</height>
+          <width>141</width>
+          <height>35</height>
          </rect>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
         <property name="font">
          <font>
-          <pointsize>9</pointsize>
+          <family>Arial</family>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="text">
@@ -908,15 +1014,22 @@ create boundaries if a fiber is successfully connected;
        <widget class="QPushButton" name="run_erosion_button">
         <property name="geometry">
          <rect>
-          <x>250</x>
-          <y>225</y>
-          <width>93</width>
-          <height>21</height>
+          <x>320</x>
+          <y>215</y>
+          <width>121</width>
+          <height>35</height>
          </rect>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
         <property name="font">
          <font>
-          <pointsize>9</pointsize>
+          <family>Arial</family>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="text">
@@ -937,8 +1050,14 @@ create boundaries if a fiber is successfully connected;
           <height>21</height>
          </rect>
         </property>
+        <property name="font">
+         <font>
+          <family>Arial</family>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
         <property name="text">
-         <string>2. Select single-channel image to overlay and measure</string>
+         <string>2.   Select single-channel image to overlay and measure</string>
         </property>
        </widget>
        <widget class="QWidget" name="gridLayoutWidget_3">
@@ -972,8 +1091,14 @@ create boundaries if a fiber is successfully connected;
           <height>21</height>
          </rect>
         </property>
+        <property name="font">
+         <font>
+          <family>Arial</family>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
         <property name="text">
-         <string>1. Select trained image containing myofiber ROIs</string>
+         <string>1.   Select trained image containing myofiber ROIs</string>
         </property>
        </widget>
        <widget class="QLabel" name="label_28">
@@ -987,6 +1112,8 @@ create boundaries if a fiber is successfully connected;
         </property>
         <property name="font">
          <font>
+          <family>Arial</family>
+          <pointsize>11</pointsize>
           <weight>75</weight>
           <bold>true</bold>
          </font>
@@ -1004,6 +1131,11 @@ create boundaries if a fiber is successfully connected;
           <height>21</height>
          </rect>
         </property>
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
         <property name="text">
          <string>3.</string>
         </property>
@@ -1012,14 +1144,21 @@ create boundaries if a fiber is successfully connected;
         <property name="geometry">
          <rect>
           <x>50</x>
-          <y>220</y>
-          <width>161</width>
-          <height>21</height>
+          <y>215</y>
+          <width>221</width>
+          <height>35</height>
          </rect>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
         <property name="font">
          <font>
-          <pointsize>9</pointsize>
+          <family>Arial</family>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="text">
@@ -1035,6 +1174,11 @@ create boundaries if a fiber is successfully connected;
           <height>21</height>
          </rect>
         </property>
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
         <property name="text">
          <string>4.</string>
         </property>
@@ -1042,11 +1186,17 @@ create boundaries if a fiber is successfully connected;
        <widget class="QDoubleSpinBox" name="flourescence_subtraction_SpinBox">
         <property name="geometry">
          <rect>
-          <x>50</x>
+          <x>55</x>
           <y>263</y>
-          <width>81</width>
-          <height>23</height>
+          <width>101</width>
+          <height>25</height>
          </rect>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
         <property name="mouseTracking">
          <bool>false</bool>
@@ -1070,11 +1220,17 @@ create boundaries if a fiber is successfully connected;
        <widget class="QLabel" name="label_31">
         <property name="geometry">
          <rect>
-          <x>140</x>
-          <y>263</y>
+          <x>160</x>
+          <y>265</y>
           <width>401</width>
           <height>21</height>
          </rect>
+        </property>
+        <property name="font">
+         <font>
+          <family>Arial</family>
+          <pointsize>11</pointsize>
+         </font>
         </property>
         <property name="text">
          <string>OPTIONAL: subtract background fluorescence</string>
@@ -1084,14 +1240,21 @@ create boundaries if a fiber is successfully connected;
         <property name="geometry">
          <rect>
           <x>50</x>
-          <y>310</y>
-          <width>161</width>
-          <height>21</height>
+          <y>301</y>
+          <width>221</width>
+          <height>35</height>
          </rect>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
         <property name="font">
          <font>
-          <pointsize>9</pointsize>
+          <family>Arial</family>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="text">
@@ -1102,14 +1265,14 @@ create boundaries if a fiber is successfully connected;
         <property name="geometry">
          <rect>
           <x>30</x>
-          <y>310</y>
+          <y>306</y>
           <width>21</width>
           <height>21</height>
          </rect>
         </property>
         <property name="font">
          <font>
-          <pointsize>9</pointsize>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="text">
@@ -1119,7 +1282,7 @@ create boundaries if a fiber is successfully connected;
        <widget class="Line" name="line">
         <property name="geometry">
          <rect>
-          <x>480</x>
+          <x>560</x>
           <y>10</y>
           <width>20</width>
           <height>341</height>
@@ -1135,15 +1298,22 @@ create boundaries if a fiber is successfully connected;
        <widget class="QPushButton" name="determine_positives_button">
         <property name="geometry">
          <rect>
-          <x>570</x>
+          <x>600</x>
           <y>80</y>
-          <width>141</width>
-          <height>21</height>
+          <width>161</width>
+          <height>35</height>
          </rect>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
         <property name="font">
          <font>
-          <pointsize>9</pointsize>
+          <family>Arial</family>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="text">
@@ -1153,15 +1323,22 @@ create boundaries if a fiber is successfully connected;
        <widget class="QPushButton" name="measure_positives_button">
         <property name="geometry">
          <rect>
-          <x>570</x>
+          <x>600</x>
           <y>120</y>
-          <width>141</width>
-          <height>21</height>
+          <width>161</width>
+          <height>35</height>
          </rect>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
         <property name="font">
          <font>
-          <pointsize>9</pointsize>
+          <family>Arial</family>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="text">
@@ -1171,15 +1348,22 @@ create boundaries if a fiber is successfully connected;
        <widget class="QPushButton" name="clear_positives_button">
         <property name="geometry">
          <rect>
-          <x>570</x>
+          <x>600</x>
           <y>160</y>
-          <width>141</width>
-          <height>21</height>
+          <width>161</width>
+          <height>35</height>
          </rect>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
         <property name="font">
          <font>
-          <pointsize>9</pointsize>
+          <family>Arial</family>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="text">
@@ -1189,11 +1373,17 @@ create boundaries if a fiber is successfully connected;
        <widget class="QPushButton" name="save_positives_button">
         <property name="geometry">
          <rect>
-          <x>570</x>
+          <x>600</x>
           <y>200</y>
-          <width>141</width>
-          <height>21</height>
+          <width>161</width>
+          <height>35</height>
          </rect>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
         <property name="maximumSize">
          <size>
@@ -1203,7 +1393,8 @@ create boundaries if a fiber is successfully connected;
         </property>
         <property name="font">
          <font>
-          <pointsize>9</pointsize>
+          <family>Arial</family>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="text">
@@ -1213,14 +1404,15 @@ create boundaries if a fiber is successfully connected;
        <widget class="QLabel" name="label_32">
         <property name="geometry">
          <rect>
-          <x>570</x>
+          <x>600</x>
           <y>40</y>
           <width>721</width>
-          <height>21</height>
+          <height>35</height>
          </rect>
         </property>
         <property name="font">
          <font>
+          <pointsize>11</pointsize>
           <weight>75</weight>
           <bold>true</bold>
          </font>
@@ -1246,6 +1438,12 @@ create boundaries if a fiber is successfully connected;
         <layout class="QGridLayout" name="gridLayout">
          <item row="0" column="0">
           <widget class="QLabel" name="micronsPixelLabel_4">
+           <property name="font">
+            <font>
+             <family>Arial</family>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
            <property name="text">
             <string>Pixels/Micron</string>
            </property>
@@ -1253,6 +1451,12 @@ create boundaries if a fiber is successfully connected;
          </item>
          <item row="0" column="2">
           <widget class="QLabel" name="label_52">
+           <property name="font">
+            <font>
+             <family>Arial</family>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
            <property name="text">
             <string>Insert Pixels/Micron ratio of image to be measured </string>
            </property>
@@ -1282,6 +1486,12 @@ create boundaries if a fiber is successfully connected;
          </item>
          <item row="1" column="2">
           <widget class="QLabel" name="label_58">
+           <property name="font">
+            <font>
+             <family>Arial</family>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
            <property name="text">
             <string>Insert resize factor</string>
            </property>
@@ -1289,6 +1499,15 @@ create boundaries if a fiber is successfully connected;
          </item>
          <item row="2" column="0">
           <widget class="QPushButton" name="print_button">
+           <property name="enabled">
+            <bool>true</bool>
+           </property>
+           <property name="font">
+            <font>
+             <family>Arial</family>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
            <property name="text">
             <string>Print Data</string>
            </property>
@@ -1296,6 +1515,12 @@ create boundaries if a fiber is successfully connected;
          </item>
          <item row="2" column="2">
           <widget class="QLabel" name="label_54">
+           <property name="font">
+            <font>
+             <family>Arial</family>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
            <property name="text">
             <string>All measured parmateters will be saved as a .xlsx file</string>
            </property>
@@ -1303,6 +1528,12 @@ create boundaries if a fiber is successfully connected;
          </item>
          <item row="1" column="0">
           <widget class="QLabel" name="micronsPixelLabel_3">
+           <property name="font">
+            <font>
+             <family>Arial</family>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
            <property name="text">
             <string>Resize factor</string>
            </property>
