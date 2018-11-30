@@ -842,7 +842,7 @@ class Quantimus:
         worksheet.write_column('E1', dataarray[4])
         worksheet.write_column('F1', dataarray[5])
 
-        worksheet.write('G1', 'Scale Factor (microns/pixel)')
+        worksheet.write('G1', 'Scale Factor (pixels/micron)')
         worksheet.write('G2', scalefactor)
         worksheet.write('H1', 'Resize Factor')
         worksheet.write('H2', resizefactor)
