@@ -12,7 +12,12 @@ import pyqtgraph as pg
 import math
 import flika
 
+import warnings
+# This command will be temporarily implemented to ignore warnings that will make analysis harder.
+warnings.filterwarnings("ignore")
+
 from .marking_binary_window import *
+
 
 flika_version = flika.__version__
 if StrictVersion(flika_version) < StrictVersion('0.2.23'):
