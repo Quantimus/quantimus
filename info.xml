@@ -3,16 +3,16 @@
         quantimus
     </directory>
 	<version>
-		2018.08.03
+		2024.02.07
 	</version>
 	<author>
 		QuantiMus Organization
 	</author>
 	<url>
-
 		https://github.com/Quantimus/quantimus/archive/master.zip
 	</url>
 	<dependencies>
+    <dependency name='xlsxwriter'></dependency>
 	</dependencies>
 	<menu_layout>
 		<action location="quantimus" function="quantimus.gui">Open QuantiMus</action>
