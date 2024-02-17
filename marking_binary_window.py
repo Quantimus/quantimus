@@ -35,7 +35,7 @@ class ClassifierWindow(Window):
         if metadata is None:
             metadata = dict()
 
-        tif = tif.astype(np.bool)
+        tif = tif.astype(bool)
         super().__init__(tif, name, filename, commands, metadata)
 
         # Window images

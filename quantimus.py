@@ -29,7 +29,7 @@ else:
 
 def show_label_img(binary_img):
     newlabel = label(binary_img, connectivity=2)
-    image = np.zeros((np.max(newlabel), newlabel.shape[0], newlabel.shape[1]), dtype=np.bool)
+    image = np.zeros((np.max(newlabel), newlabel.shape[0], newlabel.shape[1]), dtype=bool)
     for i in np.arange(1, np.max(newlabel)):
         image[i - 1] = newlabel == i
     return Window(image)
