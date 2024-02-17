@@ -1,5 +1,6 @@
 import os
 import scipy
+import numpy as np
 from distutils.version import StrictVersion
 import xlsxwriter
 from skimage.filters import gabor_kernel
@@ -285,7 +286,7 @@ class Quantimus:
                 needalert = False
                 if np.max(win.image) > 1:
                     needalert = True
-                    image = win.image.astype(np.float)
+                    image = win.image.astype(float)
                     image -= np.min(image)
                     image /= np.max(image)
                     win.image = image
