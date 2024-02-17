@@ -5,7 +5,7 @@ from skimage import measure
 from skimage import morphology
 from skimage.measure import label
 from skimage.morphology import diamond
-from qtpy import QtWidgets
+from qtpy import QtWidgets, QtCore
 import numpy as np
 import json
 import codecs
@@ -62,7 +62,7 @@ class ClassifierWindow(Window):
     def mouseClickEvent(self, ev):
         if self.window_props is None:
             self.window_props = measure.regionprops(self.labeled_img)
-        if ev.button() == 1:
+        if ev.button() == QtCore.Qt.LeftButton:
             x = int(self.x)
             y = int(self.y)
             try:

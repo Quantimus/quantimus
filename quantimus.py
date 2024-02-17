@@ -217,8 +217,6 @@ class Quantimus:
         self.dapi_img_selector = None
         self.binarized_dapi_img_selector = None
 
-        pass
-
     def gui(self):
 
         # GUI Setup
