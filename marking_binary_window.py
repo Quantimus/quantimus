@@ -209,7 +209,7 @@ class ClassifierWindow(Window):
     def get_training_data(self):
         if self.features_array is None:
             self.features_array = self.get_features_array()
-        states = np.array([np.asscalar(a)for a in self.window_states])
+        states = np.array([a.item() for a in self.window_states])
         x = self.features_array[states > 0, :]
         y = states[states > 0]
         y[y == 2] = 0
@@ -234,7 +234,7 @@ class ClassifierWindow(Window):
         filename = save_file_gui("Save classifications", filetypes='*.json')
         if filename is None:
             return None
-        states = [np.asscalar(a)for a in self.window_states]
+        states = [a.item() for a in self.window_states]
         data = {'states': states}
         # this saves the array in .json format
         json.dump(data, codecs.open(filename, 'w', encoding='utf-8'), separators=(',', ':'), sort_keys=True, indent=4)
