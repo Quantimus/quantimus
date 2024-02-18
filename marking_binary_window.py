@@ -1,19 +1,11 @@
+import json
+import codecs
 from flika.window import Window
 from flika.utils.misc import save_file_gui, open_file_gui
 from flika import global_vars as g
-from skimage import measure
-from skimage import morphology
-from skimage.measure import label
-from skimage.morphology import diamond
+import skimage
 from qtpy import QtWidgets, QtCore
 import numpy as np
-import json
-import codecs
-
-
-def rotation_matrix(theta):
-    return np.array([[np.cos(theta), -np.sin(theta)],
-                     [np.sin(theta), np.cos(theta)]])
 
 
 class ClassifierWindow(Window):
@@ -40,8 +32,8 @@ class ClassifierWindow(Window):
 
         # Window images
         self.imageIdentifier = None
-        self.labeled_img = label(tif, connectivity=2)
-        self.eroded_labeled_img = label(tif, connectivity=2)
+        self.labeled_img = skimage.measure.label(tif, connectivity=2)
+        self.eroded_labeled_img = skimage.measure.label(tif, connectivity=2)
         self.colored_img = np.repeat(self.image[:, :, np.newaxis], 3, 2)
         self.imageview.setImage(self.colored_img)
 
@@ -61,7 +53,7 @@ class ClassifierWindow(Window):
 
     def mouseClickEvent(self, ev):
         if self.window_props is None:
-            self.window_props = measure.regionprops(self.labeled_img)
+            self.window_props = skimage.measure.regionprops(self.labeled_img)
         if ev.button() == QtCore.Qt.LeftButton:
             x = int(self.x)
             y = int(self.y)
@@ -187,7 +179,7 @@ class ClassifierWindow(Window):
         # eccentricity: 0 is a circle, 1 is a line
         if self.features_array is None:
             if self.window_props is None:
-                self.window_props = measure.regionprops(self.labeled_img)
+                self.window_props = skimage.measure.regionprops(self.labeled_img)
             area = np.array([p.filled_area for p in self.window_props])
             eccentricity = np.array([p.eccentricity for p in self.window_props])
             convexity = np.array([p.filled_area / p.convex_area for p in self.window_props])
@@ -204,7 +196,7 @@ class ClassifierWindow(Window):
 
     def calculate_window_props(self):
         if self.window_props is None:
-            self.window_props = measure.regionprops(self.labeled_img)
+            self.window_props = skimage.measure.regionprops(self.labeled_img)
 
     def get_training_data(self):
         if self.features_array is None:
@@ -225,7 +217,7 @@ class ClassifierWindow(Window):
 
         x = np.concatenate((roi_num[:, np.newaxis], area[:, np.newaxis], min_ferets), 1)
         if g.quantimus.intensity_img is not None and g.quantimus.flourescence_img is not None:
-            y = measure.regionprops(g.quantimus.flourescence_img, g.quantimus.intensity_img)
+            y = skimage.measure.regionprops(g.quantimus.flourescence_img, g.quantimus.intensity_img)
             mfi = np.array([p.mean_intensity for p in y])
             x = np.concatenate((x, mfi[:, np.newaxis]), 1)
         return x
@@ -283,7 +275,7 @@ class ClassifierWindow(Window):
 
     def set_roi_states(self):
         if self.window_props is None:
-            self.window_props = measure.regionprops(self.labeled_img)
+            self.window_props = skimage.measure.regionprops(self.labeled_img)
         self.colored_img = np.repeat(self.image[:, :, np.newaxis], 3, 2)
         for i in np.nonzero(self.window_states == 1)[0]:
             x, y = self.window_props[i].coords.T
@@ -337,7 +329,8 @@ class ClassifierWindow(Window):
                     erodedarea = arraysize - arrayfalsecount
 
                     if erodedarea > targetarea:
-                        image = morphology.binary_erosion(image, selem=diamond(1))
+                        image = skimage.morphology.binary_erosion(image,
+                                                                  footprint=skimage.morphology.diamond(1))
                     else:
                         break
 
@@ -355,7 +348,7 @@ class ClassifierWindow(Window):
 
                 self.eroded_labeled_img[erodedx, erodedy] = 1
 
-        eroded_label = label(self.eroded_labeled_img, connectivity=2)
-        g.quantimus.eroded_roi_states = measure.regionprops(eroded_label)
+        eroded_label = skimage.measure.label(self.eroded_labeled_img, connectivity=2)
+        g.quantimus.eroded_roi_states = skimage.measure.regionprops(eroded_label)
         g.quantimus.eroded_labeled_img = self.eroded_labeled_img
         g.quantimus.paint_dapi_colored_image()

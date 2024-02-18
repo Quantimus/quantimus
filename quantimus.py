@@ -1,44 +1,41 @@
 import os
+from itertools import chain
+import math
+import json
+import codecs
 import scipy
 import numpy as np
-from distutils.version import StrictVersion
 import xlsxwriter
-from skimage.filters import gabor_kernel
-from scipy.signal import convolve2d
 from qtpy import uic, QtGui
-from skimage.morphology import binary_dilation
-from itertools import chain
+import skimage
 from sklearn import svm
 import pyqtgraph as pg
-import math
+from qtpy import QtWidgets
 import flika
+from flika import global_vars as g
 
 import warnings
 # This command will be temporarily implemented to ignore warnings that will make analysis harder.
 warnings.filterwarnings("ignore")
 
-from .marking_binary_window import *
+from .marking_binary_window import ClassifierWindow
 
-
-flika_version = flika.__version__
-if StrictVersion(flika_version) < StrictVersion('0.2.23'):
-    from flika.process.BaseProcess import BaseProcess, WindowSelector, SliderLabel, CheckBox
-else:
-    from flika.utils.BaseProcess import BaseProcess, WindowSelector, SliderLabel, CheckBox
-
+def rotation_matrix(theta):
+    return np.array([[np.cos(theta), -np.sin(theta)],
+                     [np.sin(theta), np.cos(theta)]])
 
 def show_label_img(binary_img):
-    newlabel = label(binary_img, connectivity=2)
+    newlabel = skimage.measure.label(binary_img, connectivity=2)
     image = np.zeros((np.max(newlabel), newlabel.shape[0], newlabel.shape[1]), dtype=bool)
     for i in np.arange(1, np.max(newlabel)):
         image[i - 1] = newlabel == i
-    return Window(image)
+    return flika.window.Window(image)
 
 
 def get_important_features(binary_image):
     features = {}
-    label_img = label(binary_image, connectivity=2)
-    props = measure.regionprops(label_img)
+    label_img = skimage.measure.label(binary_image, connectivity=2)
+    props = skimage.measure.regionprops(label_img)
     features['convexity'] = np.array([p.filled_area / p.convex_area for p in props])
     features['eccentricity'] = np.array([p.eccentricity for p in props])
     features['area'] = np.array([p.filled_area for p in props]) / 4000
@@ -47,7 +44,7 @@ def get_important_features(binary_image):
 
 
 def remove_borders(binary_image):
-    label_img = label(binary_image, connectivity=2)
+    label_img = skimage.measure.label(binary_image, connectivity=2)
     mx, my = binary_image.shape
     border_labels = set(label_img[:, 0]) | set(label_img[0, :]) | set(label_img[mx - 1, :]) | set(label_img[:, my - 1])
     for i in border_labels:
@@ -84,7 +81,7 @@ def generate_kernel(theta=0):
     frequency = .1
     sigma_x = 1  # left right axis. Bigger this number, smaller the width
     sigma_y = 2  # right left axis. Bigger this number, smaller the height
-    kernel = np.real(gabor_kernel(frequency, theta, sigma_x, sigma_y))
+    kernel = np.real(skimage.filters.gabor_kernel(frequency, theta, sigma_x, sigma_y))
     kernel -= np.mean(kernel)
     return kernel
 
@@ -129,19 +126,19 @@ def get_border_between_two_props(prop1, prop2):
     top_left = bbox[:2]
     a = prop1.coords - top_left
     image1[a[:, 0], a[:, 1]] = 1
-    image1_expanded1 = binary_dilation(image1)
-    image1_expanded2 = binary_dilation(binary_dilation(image1_expanded1))
+    image1_expanded1 = skimage.morphology.binary_dilation(image1)
+    image1_expanded2 = skimage.morphology.binary_dilation(skimage.morphology.binary_dilation(image1_expanded1))
     image1_expanded2[image1_expanded1] = 0
     border = image1_expanded2 * image2
     return np.argwhere(border) + top_left
 
 
 def get_new_image(image, thresh1=.20, thresh2=.30):
-    resizefactor = g.quantimus.algorithm_gui.resize_factor_SpinBox.value()
-    label_im_1 = label(image < thresh1, connectivity=2)
-    label_im_2 = label(image < thresh2, connectivity=2)
-    props_1 = measure.regionprops(label_im_1)
-    props_2 = measure.regionprops(label_im_2)
+    resizefactor = flika.global_vars.quantimus.algorithm_gui.resize_factor_SpinBox.value()
+    label_im_1 = skimage.measure.label(image < thresh1, connectivity=2)
+    label_im_2 = skimage.measure.label(image < thresh2, connectivity=2)
+    props_1 = skimage.measure.regionprops(label_im_1)
+    props_2 = skimage.measure.regionprops(label_im_2)
     borders = np.zeros_like(image)
 
     #  The maximum of the labeled image is the number of contiguous regions, or ROIs.
@@ -223,14 +220,14 @@ class Quantimus:
         gui = uic.loadUi(os.path.join(os.path.dirname(__file__), 'quantimus.ui'))
         self.algorithm_gui = gui
         gui.show()
-        self.original_window_selector = WindowSelector()
+        self.original_window_selector = flika.utils.BaseProcess.WindowSelector()
         self.original_window_selector.valueChanged.connect(self.create_markers_win)
         gui.gridLayout_18.addWidget(self.original_window_selector)
-        self.threshold1_slider = SliderLabel(3)
+        self.threshold1_slider = flika.utils.BaseProcess.SliderLabel(3)
         self.threshold1_slider.setRange(0, 1)
         self.threshold1_slider.setValue(.2)
         self.threshold1_slider.valueChanged.connect(self.threshold_slider_changed)
-        self.threshold2_slider = SliderLabel(2)
+        self.threshold2_slider = flika.utils.BaseProcess.SliderLabel(2)
         self.threshold2_slider.setRange(0, 1)
         self.threshold2_slider.setValue(.4)
         self.threshold2_slider.valueChanged.connect(self.threshold_slider_changed)
@@ -242,23 +239,23 @@ class Quantimus:
         gui.load_classification_button.pressed.connect(self.load_classification_to_trained_image)
         gui.manual_filter_button.pressed.connect(self.filter_update)
 
-        self.binary_img_selector = WindowSelector()
+        self.binary_img_selector = flika.utils.BaseProcess.WindowSelector()
         self.binary_img_selector.valueChanged.connect(self.select_binary_image)
         gui.gridLayout_import_binary_image.addWidget(self.binary_img_selector)
 
-        self.intensity_img_selector = WindowSelector()
+        self.intensity_img_selector = flika.utils.BaseProcess.WindowSelector()
         self.intensity_img_selector.valueChanged.connect(self.select_intensity_image)
         gui.gridLayout_intensity_image.addWidget(self.intensity_img_selector)
 
-        self.flourescence_img_selector = WindowSelector()
+        self.flourescence_img_selector = flika.utils.BaseProcess.WindowSelector()
         self.flourescence_img_selector.valueChanged.connect(self.select_flourescence_image)
         gui.gridLayout_flourescence_image.addWidget(self.flourescence_img_selector)
 
-        self.dapi_img_selector = WindowSelector()
+        self.dapi_img_selector = flika.utils.BaseProcess.WindowSelector()
         self.dapi_img_selector.valueChanged.connect(self.select_dapi_image)
         gui.gridLayout_import_DAPI.addWidget(self.dapi_img_selector)
 
-        self.binarized_dapi_img_selector = WindowSelector()
+        self.binarized_dapi_img_selector = flika.utils.BaseProcess.WindowSelector()
         self.binarized_dapi_img_selector.valueChanged.connect(self.select_dapi_binarized_image)
         gui.gridLayout_contains_DAPI.addWidget(self.binarized_dapi_img_selector)
 
@@ -293,7 +290,7 @@ class Quantimus:
                     win._init_dimensions(win.image)
                     win.imageview.ui.graphicsView.addItem(win.top_left_label)
                 original = win.image
-                self.markers_win = Window(np.zeros_like(original, dtype=np.uint8), 'Binary Markers')
+                self.markers_win = flika.window.Window(np.zeros_like(original, dtype=np.uint8), 'Binary Markers')
                 self.markers_win.imageview.setLevels(0, 2)
                 self.markers_win.imageview.ui.histogram.gradient.addTick(0, QtGui.QColor(0, 0, 255), True)
                 self.markers_win.imageview.ui.histogram.gradient.setTickValue(1, .50)
@@ -324,9 +321,9 @@ class Quantimus:
         image = self.original_window_selector.window.image
         image_new = image
 
-        label_im_1 = label(image < lower_bound, connectivity=2)
-        label_im_2 = label(image < upper_bound, connectivity=2)
-        props_2 = measure.regionprops(label_im_2)
+        label_im_1 = skimage.measure.label(image < lower_bound, connectivity=2)
+        label_im_2 = skimage.measure.label(image < upper_bound, connectivity=2)
+        props_2 = skimage.measure.regionprops(label_im_2)
 
         progress = self.create_progress_bar('Please wait while image is processed...')
         progress.show()
@@ -345,7 +342,7 @@ class Quantimus:
             if np.max(label_im_1[x, y]) == 0:
                 image_new[x, y] = 2
 
-        self.filled_boundaries_win = Window(image_new, 'Filled Boundaries')
+        self.filled_boundaries_win = flika.window.Window(image_new, 'Filled Boundaries')
         classifier_image = remove_borders(image_new < upper_bound)
         self.binary_img = ClassifierWindow(classifier_image, 'Binary Window')
 
@@ -403,7 +400,7 @@ class Quantimus:
         if self.classifier_window is None:
             g.alert("Please select a Binary Image")
         else:
-            filename = open_file_gui("Open training_data", filetypes='*.json')
+            filename = flika.utils.misc.open_file_gui("Open training_data", filetypes='*.json')
             if filename is None:
                 return None
             obj_text = codecs.open(filename, 'r', encoding='utf-8').read()
@@ -567,7 +564,7 @@ class Quantimus:
         elif self.intensity_img is None:
             g.alert('Make sure an Intensity image is selected')
         else:
-            intensityprops = measure.regionprops(self.flourescence_img.labeled_img, self.intensity_img)
+            intensityprops = skimage.measure.regionprops(self.flourescence_img.labeled_img, self.intensity_img)
             self.flourescenceIntensities = np.array([p.mean_intensity for p in intensityprops])
             self.isIntensityCalculated = True
 
@@ -673,7 +670,7 @@ class Quantimus:
         self.reset_dapi_data()
         # Select the image
         self.dapi_binarized_img = self.binarized_dapi_img_selector.window.image
-        self.dapi_rois = measure.regionprops(self.dapi_binarized_img)
+        self.dapi_rois = skimage.measure.regionprops(self.dapi_binarized_img)
         # Overlay the DAPI onto the image
         self.dapi_img.set_bg_im()
 
@@ -836,7 +833,7 @@ class Quantimus:
                     else:
                         dataarray[5].append("0")
 
-        filesaveasname = save_file_gui('Save file as...', filetypes='*.xlsx')
+        filesaveasname = flika.utils.misc.save_file_gui('Save file as...', filetypes='*.xlsx')
         workbook = xlsxwriter.Workbook(filesaveasname)
         worksheet = workbook.add_worksheet()
         worksheet.write_column('A1', dataarray[0])
@@ -873,7 +870,7 @@ class Quantimus:
                 min_feret_diameters.append(len(prop.convex_image.shape))
             else:
                 identity_convex_hull = prop.convex_image
-                coordinates = np.vstack(measure.find_contours(identity_convex_hull, 0.5, fully_connected='high'))
+                coordinates = np.vstack(skimage.measure.find_contours(identity_convex_hull, 0.5, fully_connected='high'))
                 coordinates -= np.mean(coordinates, 0)
                 diams = []
                 for r in rs:
