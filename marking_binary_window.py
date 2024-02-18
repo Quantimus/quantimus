@@ -50,61 +50,64 @@ class ClassifierWindow(Window):
         self.menu.addAction(QtWidgets.QAction("&Create Binary Window", self, triggered=self.create_binary_window))
         self.features_array = None
         self.features_array_extended = None
-
+    
     def mouseClickEvent(self, ev):
-        if self.window_props is None:
-            self.window_props = skimage.measure.regionprops(self.labeled_img)
         if ev.button() == QtCore.Qt.LeftButton:
             x = int(self.x)
             y = int(self.y)
-            try:
-                roi_num = self.labeled_img[x, y] - 1
-            except IndexError:
-                roi_num = -1
-            if roi_num < 0:
-                pass
-            else:
-                prop = self.window_props[roi_num]
-
-                mfi = 'Unknown'
-                if g.quantimus.flourescenceIntensities is not None:
-                    mfi = g.quantimus.flourescenceIntensities[roi_num]
-
-                print('ROI #{}. area={}. eccentricity={}. convexity={}. circularity={}. perimeter={}. minor_axis_length={}. MFI={}. '
-                      .format(roi_num,
-                              prop.area,
-                              prop.eccentricity,
-                              prop.area / prop.convex_area,
-                              (4 * np.pi * prop.area) / (prop.perimeter * prop.perimeter),
-                              prop.perimeter,
-                              prop.minor_axis_length,
-                              mfi))
-
-                # Different windows have different MouseClickEvent logic
-                if self.imageIdentifier == ClassifierWindow.TRAINING:
-                    x, y = self.window_props[roi_num].coords.T
-                    color, state = self.training_mouse_click_event(roi_num)
-                    self.window_states[roi_num] = state
-                    self.colored_img[x, y] = color
-                    self.update_image(self.colored_img)
-                elif self.imageIdentifier == ClassifierWindow.FLR:
-                    if self.temp_states is None:
-                        self.temp_states = np.copy(self.window_states)
-                    x, y = self.window_props[roi_num].coords.T
-                    color, state = self.flr_mouse_click_event(roi_num)
-                    self.temp_states[roi_num] = state
-                    self.colored_img[x, y] = color
-                    self.update_image(self.colored_img)
-                    self.update_parent_image(roi_num, x, y, self.temp_states)
-                elif self.imageIdentifier == ClassifierWindow.DAPI:
-                    x, y = self.window_props[roi_num].coords.T
-                    color, state = self.dapi_mouse_click_event(roi_num)
-                    self.window_states[roi_num] = state
-                    self.colored_img[x, y] = color
-                    self.update_image(self.colored_img)
-                    self.update_parent_image(roi_num, x, y, self.window_states)
-
+            self.mouse_left_click_inner(x, y)
         super().mouseClickEvent(ev)
+
+    def mouse_left_click_inner(self, x:int, y:int):
+        print(f'x,y: ({x}, {y})')
+        if self.window_props is None:
+            self.window_props = skimage.measure.regionprops(self.labeled_img)
+        try:
+            roi_num = self.labeled_img[x, y] - 1
+        except IndexError:
+            roi_num = -1
+        if roi_num < 0:
+            pass
+        else:
+            prop = self.window_props[roi_num]
+
+            mfi = 'Unknown'
+            if g.quantimus.flourescenceIntensities is not None:
+                mfi = g.quantimus.flourescenceIntensities[roi_num]
+
+            print('ROI #{}. area={}. eccentricity={}. convexity={}. circularity={}. perimeter={}. minor_axis_length={}. MFI={}. '
+                    .format(roi_num,
+                            prop.area,
+                            prop.eccentricity,
+                            prop.area / prop.convex_area,
+                            (4 * np.pi * prop.area) / (prop.perimeter * prop.perimeter),
+                            prop.perimeter,
+                            prop.minor_axis_length,
+                            mfi))
+            # Different windows have different MouseClickEvent logic
+            if self.imageIdentifier == ClassifierWindow.TRAINING:
+                x, y = self.window_props[roi_num].coords.T
+                color, state = self.training_mouse_click_event(roi_num)
+                self.window_states[roi_num] = state
+                self.colored_img[x, y] = color
+                self.update_image(self.colored_img)
+            elif self.imageIdentifier == ClassifierWindow.FLR:
+                if self.temp_states is None:
+                    self.temp_states = np.copy(self.window_states)
+                x, y = self.window_props[roi_num].coords.T
+                color, state = self.flr_mouse_click_event(roi_num)
+                self.temp_states[roi_num] = state
+                self.colored_img[x, y] = color
+                self.update_image(self.colored_img)
+                self.update_parent_image(roi_num, x, y, self.temp_states)
+            elif self.imageIdentifier == ClassifierWindow.DAPI:
+                x, y = self.window_props[roi_num].coords.T
+                color, state = self.dapi_mouse_click_event(roi_num)
+                self.window_states[roi_num] = state
+                self.colored_img[x, y] = color
+                self.update_image(self.colored_img)
+                self.update_parent_image(roi_num, x, y, self.window_states)
+
 
     def training_mouse_click_event(self, roi_num):
         old_state = self.window_states[roi_num]

@@ -1,3 +1,4 @@
+import sys
 import os
 from itertools import chain
 import math
@@ -13,12 +14,12 @@ import pyqtgraph as pg
 from qtpy import QtWidgets
 import flika
 from flika import global_vars as g
+sys.path.append(os.path.dirname(__file__))
+from marking_binary_window import ClassifierWindow
 
 import warnings
 # This command will be temporarily implemented to ignore warnings that will make analysis harder.
 warnings.filterwarnings("ignore")
-
-from .marking_binary_window import ClassifierWindow
 
 def rotation_matrix(theta):
     return np.array([[np.cos(theta), -np.sin(theta)],
